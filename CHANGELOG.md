@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.2.0] — 2026-03-25
+
+### 📄 Template-Based DOCX Download
+
+#### Added
+- **Template Selector** — DOCX download button เปลี่ยนเป็น Split Button พร้อม Dropdown เลือก Template ได้ทั้งในหน้า Modal, Table View, และ Card View
+- **XFINIT v1 Template** — Template รายงานสไตล์ XFINIT: header logo, fonts TH Sarabun New, สีชมพู `FF3B63`, sections ครบ 4 ส่วน (สรุปผู้บริหาร / เนื้อหาฉบับเต็ม / การวิเคราะห์ผลกระทบ / คำแนะนำในการรับมือ)
+- **`docx_generator_xfinit.py`** — Generator สำหรับ XFINIT v1 ใช้ python-docx + lxml XML manipulation เพื่อ fill article data เข้า template จริง
+- **Flask Route `/download-docx/<id>/xfinit`** — Download DOCX ด้วย XFINIT v1 Template
+
+#### Technical Details
+- Template file: `assets/xfinit_v1_template.docx` (XFINIT v1 master template)
+- Static logo: `static/xfinit_logo.png` (แสดงใน dropdown)
+- Generator approach: Copy template → find landmark paragraphs (section headers) → XML-level replacement with lxml
+- รองรับ multi-paragraph content, bullet points อัตโนมัติ (`• `), content splitting by newline
+
+---
+
 ## [1.1.0] — 2026-03-25
 
 ### 🔐 Enterprise Authentication & User Management

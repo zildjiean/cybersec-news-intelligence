@@ -587,6 +587,30 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
 .status-inactive{background:rgba(113,113,122,.08);color:#a1a1aa;border:1px solid rgba(113,113,122,.2)}
 .totp-ok{color:var(--green);font-size:11px}
 .totp-no{color:var(--td);font-size:11px}
+/* ── DOCX template split-button dropdown ── */
+.docx-dd-wrap{position:relative;display:inline-flex;align-items:center}
+.docx-dd-wrap .docx-dd-main{border-radius:6px 0 0 6px;border-right:1px solid rgba(255,255,255,.12)!important}
+.docx-dd-wrap .docx-dd-arr{border-radius:0 6px 6px 0;padding:0 7px}
+.docx-dd-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:900;
+  background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;
+  min-width:160px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+  padding:6px 0;display:none;flex-direction:column}
+.docx-dd-menu.open{display:flex}
+.docx-dd-label{font-size:10px;color:var(--td);padding:4px 14px 4px;text-transform:uppercase;letter-spacing:.5px}
+.docx-dd-item{display:flex;align-items:center;gap:8px;padding:8px 14px;
+  font-size:13px;color:var(--tf);cursor:pointer;text-decoration:none;
+  transition:background .15s}
+.docx-dd-item:hover{background:var(--bg3)}
+.docx-dd-xfinit{color:#FF3B63!important}
+/* Row/card variant */
+.row-docx-dd{position:relative;display:inline-flex;align-items:center}
+.row-docx-dd .row-docx-main{border-radius:6px 0 0 6px;border-right:1px solid rgba(255,255,255,.12)!important}
+.row-docx-dd .row-docx-arr{border-radius:0 6px 6px 0;padding:0 5px;min-width:0}
+.row-docx-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:900;
+  background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;
+  min-width:155px;box-shadow:0 8px 24px rgba(0,0,0,.4);
+  padding:6px 0;display:none;flex-direction:column}
+.row-docx-menu.open{display:flex}
 </style>
 </head>
 <body>
@@ -638,7 +662,14 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
       <button class="btn bg bsm" onclick="closeArtModal()"><i class="fa fa-xmark"></i> ปิด</button>
       <button class="btn bg bsm" onclick="openEditFromModal()"><i class="fa fa-pen"></i> แก้ไข</button>
       <button class="btn bg bsm" id="mPreview" style="display:none"><i class="fa fa-eye"></i> Preview PDF</button>
-      <button class="btn bg bsm" id="mDocx" style="display:none"><i class="fa fa-file-word"></i> DOCX</button>
+      <div class="docx-dd-wrap" id="mDocxWrap" style="display:none">
+        <button class="btn bg bsm docx-dd-main" id="mDocx"><i class="fa fa-file-word"></i> DOCX</button><button class="btn bg bsm docx-dd-arr" id="mDocxArr" onclick="toggleDocxDd(event)" title="เลือก Template"><i class="fa fa-chevron-down"></i></button>
+        <div class="docx-dd-menu" id="mDocxMenu">
+          <div class="docx-dd-label">เลือก Template</div>
+          <a class="docx-dd-item" id="mDocxStd"><i class="fa fa-file-word"></i> Standard</a>
+          <a class="docx-dd-item docx-dd-xfinit" id="mDocxXfinit"><img src="/static/xfinit_logo.png" style="height:14px;vertical-align:middle;margin-right:4px"> XFINIT v1</a>
+        </div>
+      </div>
       <button class="btn bs bsm" id="mDl" style="display:none"><i class="fa fa-file-arrow-down"></i> Download PDF</button>
     </div>
   </div>
@@ -1545,7 +1576,7 @@ function renderTable(arts){
     const d=new Date(a.created_at);const ds=d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});const ts=d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
     const sc='sev sev-'+(a.severity||'Info');
     const tags=(a.tags||'').split(',').filter(t=>t.trim()).map(t=>`<span class="tag-chip">${esc(t.trim())}</span>`).join('');
-    const pdfBtn=a.pdf_path?`<a href="/download/${a.id}" class="btn bs bxs" title="Download PDF"><i class="fa fa-download"></i></a><button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><a href="/download-docx/${a.id}" class="btn bg bxs" title="Download DOCX"><i class="fa fa-file-word"></i></a>`:`<span style="font-size:11px;color:var(--td)">—</span>`;
+    const pdfBtn=a.pdf_path?`<a href="/download/${a.id}" class="btn bs bxs" title="Download PDF"><i class="fa fa-download"></i></a><button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><span class="row-docx-dd"><a href="/download-docx/${a.id}" class="btn bg bxs row-docx-main" title="Download DOCX (Standard)"><i class="fa fa-file-word"></i></a><button class="btn bg bxs row-docx-arr" onclick="toggleRowDocxDd(event,${a.id})" title="เลือก Template"><i class="fa fa-chevron-down" style="font-size:9px"></i></button><div class="row-docx-menu" id="rowDocxMenu${a.id}"><div class="docx-dd-label">เลือก Template</div><a class="docx-dd-item" href="/download-docx/${a.id}"><i class="fa fa-file-word"></i> Standard</a><a class="docx-dd-item docx-dd-xfinit" href="/download-docx/${a.id}/xfinit"><i class="fa fa-file-word" style="color:#FF3B63"></i> XFINIT v1</a></div></span>`:`<span style="font-size:11px;color:var(--td)">—</span>`;
     return`<tr>
       <td><button class="star-btn${a.starred?' on':''}" onclick="toggleStar(${a.id},${a.starred?0:1},this)" title="${a.starred?'Unstar':'Star'}"><i class="fa fa-star"></i></button></td>
       <td><div class="tdate">${ds}<br/><span style="font-size:10px;opacity:.6">${ts}</span></div></td>
@@ -1583,7 +1614,8 @@ function renderCards(arts){
       <div class="acard-foot"><span class="acard-src"><i class="fa fa-globe" style="font-size:10px;margin-right:3px"></i>${esc(a.source_name||'—')}${a.operator?`<span style="color:#52525b;margin-left:6px"><i class="fa fa-user" style="font-size:9px"></i> ${esc(a.operator)}</span>`:''}</span><span class="acard-date">${ds}</span></div>
       <div class="acard-actions">
         <button class="btn bg bxs" onclick="openArtModal(${a.id})"><i class="fa fa-align-left"></i></button>
-        ${a.pdf_path?`<button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><a href="/download/${a.id}" class="btn bs bxs" title="PDF"><i class="fa fa-download"></i></a><a href="/download-docx/${a.id}" class="btn bg bxs" title="DOCX"><i class="fa fa-file-word"></i></a>`:''}
+        ${a.pdf_path?`<button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><a href="/download/${a.id}" class="btn bs bxs" title="PDF"><i class="fa fa-download"></i></a><span class="row-docx-dd"><a href="/download-docx/${a.id}" class="btn bg bxs row-docx-main" title="DOCX Standard"><i class="fa fa-file-word"></i></a><button class="btn bg bxs row-docx-arr" onclick="toggleRowDocxDd(event,${a.id})" title="เลือก Template"><i class="fa fa-chevron-down" style="font-size:9px"></i></button><div class="row-docx-menu" id="cardDocxMenu${a.id}"><div class="docx-dd-label">เลือก Template</div><a class="docx-dd-item" href="/download-docx/${a.id}"><i class="fa fa-file-word"></i> Standard</a><a class="docx-dd-item docx-dd-xfinit" href="/download-docx/${a.id}/xfinit"><i class="fa fa-file-word" style="color:#FF3B63"></i> XFINIT v1</a></div></span>`:''}
+
         <button class="btn bg bxs" onclick="openEditModal(${a.id})" title="แก้ไข"><i class="fa fa-pen"></i></button>
         <button class="btn bg bxs" onclick="openTagModal(${a.id},'${esc(a.tags||'')}')"><i class="fa fa-tags"></i></button>
         <button class="btn bd bxs" onclick="delArt(${a.id})"><i class="fa fa-trash"></i></button>
@@ -1645,18 +1677,38 @@ function openArtModal(id){
     document.getElementById('mContent').textContent=a.thai_content||'—';
     document.getElementById('mImpact').textContent=a.thai_impact||'—';
     document.getElementById('mRec').textContent=a.thai_recommendation||'—';
-    const dl=document.getElementById('mDl'),pv=document.getElementById('mPreview'),dw=document.getElementById('mDocx');
+    const dl=document.getElementById('mDl'),pv=document.getElementById('mPreview');
+    const dwWrap=document.getElementById('mDocxWrap'),dw=document.getElementById('mDocx');
+    const dwStd=document.getElementById('mDocxStd'),dwXfinit=document.getElementById('mDocxXfinit');
     if(a.pdf_path){
-      dl.style.display='';pv.style.display='';dw.style.display='';
+      dl.style.display='';pv.style.display='';dwWrap.style.display='';
       dl.onclick=()=>window.location.href='/download/'+id;
       pv.onclick=()=>{closeArtModal();openPdfModal(id)};
       dw.onclick=()=>window.location.href='/download-docx/'+id;
-    }else{dl.style.display='none';pv.style.display='none';dw.style.display='none'}
+      dwStd.onclick=()=>{closeDocxDd();window.location.href='/download-docx/'+id};
+      dwXfinit.onclick=()=>{closeDocxDd();window.location.href='/download-docx/'+id+'/xfinit'};
+    }else{dl.style.display='none';pv.style.display='none';dwWrap.style.display='none'}
     document.getElementById('artModal').classList.add('show');document.body.style.overflow='hidden';
   }).catch(()=>toast('โหลดรายละเอียดไม่ได้','e'));
 }
-function closeArtModal(){document.getElementById('artModal').classList.remove('show');document.body.style.overflow=''}
+function closeArtModal(){closeDocxDd();document.getElementById('artModal').classList.remove('show');document.body.style.overflow=''}
 document.getElementById('artModal').addEventListener('click',function(e){if(e.target===this)closeArtModal()});
+
+/* ── DOCX template dropdown (modal) ── */
+function toggleDocxDd(e){e.stopPropagation();const m=document.getElementById('mDocxMenu');m.classList.toggle('open')}
+function closeDocxDd(){const m=document.getElementById('mDocxMenu');if(m)m.classList.remove('open')}
+/* ── DOCX template dropdown (rows/cards) ── */
+function toggleRowDocxDd(e,id){
+  e.stopPropagation();
+  // Close all other open menus first
+  document.querySelectorAll('.row-docx-menu.open').forEach(m=>{if(m.id!=='rowDocxMenu'+id && m.id!=='cardDocxMenu'+id)m.classList.remove('open')});
+  const m=document.getElementById('rowDocxMenu'+id)||document.getElementById('cardDocxMenu'+id);
+  if(m)m.classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.row-docx-dd'))document.querySelectorAll('.row-docx-menu.open').forEach(m=>m.classList.remove('open'));
+  if(!e.target.closest('#mDocxWrap'))closeDocxDd();
+});
 
 /* ── Copy buttons ── */
 function copySection(elId){

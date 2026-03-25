@@ -461,6 +461,29 @@ def download_docx(aid):
                      mimetype='application/vnd.openxmlformats-officedocument'
                                '.wordprocessingml.document')
 
+@app.route('/download-docx/<int:aid>/xfinit')
+@login_required
+def download_docx_xfinit(aid):
+    a = db.get_article_by_id(aid)
+    if not a: return 'ไม่พบบทความ', 404
+    from docx_generator_xfinit import generate_docx_xfinit
+    template_path = os.path.join(os.path.dirname(__file__), 'assets', 'xfinit_v1_template.docx')
+    if not os.path.exists(template_path):
+        return 'ไม่พบไฟล์ Template XFINIT v1', 500
+    article_data = {k: a.get(k, '') for k in (
+        'thai_title', 'thai_summary', 'thai_content', 'thai_impact',
+        'thai_recommendation', 'severity', 'category', 'source_name',
+        'url', 'tlp', 'operator')}
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    docx_path = os.path.join(PDF_DIR, f'cybersec_xfinit_{aid}_{ts}.docx')
+    ok = generate_docx_xfinit(article_data, docx_path)
+    if not ok: return 'ไม่สามารถสร้าง DOCX (XFINIT v1) ได้', 500
+    dl_name = re.sub(r'[^\w\u0E00-\u0E7F\-.]', '_',
+                     f'XFINIT_{aid}_{a["thai_title"][:20]}.docx')
+    return send_file(docx_path, as_attachment=True, download_name=dl_name,
+                     mimetype='application/vnd.openxmlformats-officedocument'
+                               '.wordprocessingml.document')
+
 @app.route('/download/<int:aid>')
 @login_required
 def download_pdf(aid):
