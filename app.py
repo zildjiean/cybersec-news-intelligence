@@ -617,13 +617,17 @@ def change_own_password():
     old_pw   = (data.get('old_password') or '')
     new_pw   = (data.get('new_password') or '')
     user     = db.get_user(session['user_id'])
-    if not _bcrypt.checkpw(old_pw.encode(), user['password_hash'].encode()):
-        return jsonify({'error': 'รหัสผ่านเดิมไม่ถูกต้อง'}), 400
+    stored_hash = user['password_hash']
+    # handle both str and bytes from DB
+    if isinstance(stored_hash, str):
+        stored_hash = stored_hash.encode()
+    if not _bcrypt.checkpw(old_pw.encode(), stored_hash):
+        return jsonify({'ok': False, 'error': 'รหัสผ่านเดิมไม่ถูกต้อง'}), 400
     if len(new_pw) < 8:
-        return jsonify({'error': 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'}), 400
+        return jsonify({'ok': False, 'error': 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'}), 400
     pw_hash = _bcrypt.hashpw(new_pw.encode(), _bcrypt.gensalt()).decode()
     db.update_user(session['user_id'], password_hash=pw_hash)
-    return jsonify({'success': True})
+    return jsonify({'ok': True})
 
 # ════════════════════════════════════════════════════════════════════════════
 #  ENTRY
