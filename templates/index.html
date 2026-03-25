@@ -792,6 +792,24 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
     </div>
   </div>
   <div class="sb" id="sb">
+
+    <!-- Server Key Banner — shown when admin has set a server-side key -->
+    <div id="serverKeyBanner" style="display:none;margin-bottom:14px;padding:10px 14px;
+      background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);
+      border-left:3px solid var(--green);border-radius:var(--r8);
+      font-size:12px;color:#86efac;align-items:center;gap:8px">
+      <i class="fa fa-shield-check"></i>
+      <span>ระบบมี <strong>Server API Key</strong> พร้อมใช้งาน (ตั้งค่าโดย Admin) — ไม่จำเป็นต้องใส่ Key ของคุณเอง</span>
+    </div>
+
+    <!-- No Server Key notice — shown to non-admin when no server key configured -->
+    <div id="noKeyNotice" style="display:none;margin-bottom:14px;padding:10px 14px;
+      background:rgba(234,179,8,.05);border:1px solid rgba(234,179,8,.2);
+      border-left:3px solid var(--yellow);border-radius:var(--r8);font-size:12px;color:#fde68a">
+      <i class="fa fa-triangle-exclamation" style="margin-right:6px"></i>
+      Admin ยังไม่ได้ตั้งค่า Server API Key — กรุณาใส่ Key ของคุณเองด้านล่าง หรือติดต่อ Admin
+    </div>
+
     <div class="fg">
       <div class="fl">ผู้ให้บริการ LLM <span class="req">*</span></div>
       <div class="rgrid">
@@ -1333,6 +1351,7 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
 <script>
 /* ── Server-injected config ── */
 const HAS_SERVER_KEY = {{ 'true' if has_server_key else 'false' }};
+const CURRENT_ROLE   = '{{ current_role }}';
 
 /* ── State ── */
 let curId=null,dupId=null,allArts=[],hTimer=null,settOpen=false;
@@ -1354,12 +1373,34 @@ function toggleTheme(){
   applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light');
 }
 
+/* ── Settings Panel Init ── */
+function initSettingsPanel(){
+  const banner  = document.getElementById('serverKeyBanner');
+  const notice  = document.getElementById('noKeyNotice');
+  const keyRow  = document.getElementById('fKey');
+  const keyReq  = document.querySelector('.fl .req');
+
+  if(HAS_SERVER_KEY){
+    // Show green server key banner
+    if(banner){ banner.style.display='flex'; }
+    // Make key field optional — update placeholder and remove asterisk
+    if(keyRow){ keyRow.placeholder='ไม่จำเป็น — ใส่เฉพาะถ้าต้องการ override Server Key'; }
+    document.querySelectorAll('.fl .req').forEach(el=>{
+      if(el.closest('.fg') && el.closest('.fg').querySelector('#fKey')) el.style.display='none';
+    });
+  } else if(CURRENT_ROLE !== 'admin'){
+    // Non-admin with no server key — show warning
+    if(notice){ notice.style.display='block'; }
+  }
+}
+
 /* ── Boot ── */
 document.addEventListener('DOMContentLoaded',()=>{
   const savedTheme=localStorage.getItem('csi_theme')||'dark';
   applyTheme(savedTheme);
   loadLS(); onProv(); loadHist(); syncNav();
   setView(curView);
+  initSettingsPanel();
 });
 
 /* ── Tabs ── */
