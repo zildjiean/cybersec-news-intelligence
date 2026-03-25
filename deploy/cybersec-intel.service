@@ -1,0 +1,62 @@
+# ══════════════════════════════════════════════════════════════
+#  systemd service — CyberSec News Intelligence
+#
+#  วิธีติดตั้ง:
+#    sudo cp cybersec-intel.service /etc/systemd/system/
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable cybersec-intel
+#    sudo systemctl start cybersec-intel
+#
+#  ดู log:
+#    sudo journalctl -u cybersec-intel -f
+# ══════════════════════════════════════════════════════════════
+
+[Unit]
+Description=CyberSec News Intelligence — ระบบแปลข่าว Cybersecurity เป็นภาษาไทย
+After=network.target
+Wants=network-online.target
+
+[Service]
+# ── ผู้ใช้ที่รัน app (เปลี่ยนเป็น user จริงบน server) ──────────
+User=ubuntu
+Group=ubuntu
+
+# ── path ของโปรเจค (เปลี่ยนให้ตรงกับ server) ────────────────
+WorkingDirectory=/opt/cybersec-news-intelligence
+
+# ── Environment variables (แทน config.json สำหรับ secrets) ──
+Environment="FLASK_ENV=production"
+Environment="PYTHONUNBUFFERED=1"
+# ใส่ API keys ที่นี่หรือใช้ EnvironmentFile แทน
+# Environment="GEMINI_API_KEY=your_key_here"
+# EnvironmentFile=/etc/cybersec-intel/secrets.env
+
+# ── รัน Gunicorn แทน Flask dev server ────────────────────────
+# -w = จำนวน worker processes (แนะนำ: 2 × CPU cores + 1)
+# -b = bind address (127.0.0.1 เพราะ Nginx เป็น proxy อยู่หน้า)
+# --timeout = หมดเวลา request (วินาที) — ตั้ง 120 เพราะ LLM ช้า
+# --access-logfile = log HTTP requests
+ExecStart=/usr/local/bin/gunicorn \
+    --workers 4 \
+    --bind 127.0.0.1:5055 \
+    --timeout 120 \
+    --keep-alive 5 \
+    --access-logfile /var/log/cybersec-intel/access.log \
+    --error-logfile /var/log/cybersec-intel/error.log \
+    --log-level info \
+    app:app
+
+# ── Restart policy ────────────────────────────────────────────
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# ── Security hardening ────────────────────────────────────────
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/cybersec-news-intelligence /var/log/cybersec-intel
+
+[Install]
+WantedBy=multi-user.target
