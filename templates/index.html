@@ -596,49 +596,41 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
 .m-tmpl-btn:hover{background:var(--bg3);border-color:rgba(255,255,255,.2)}
 .m-tmpl-btn-xfinit{border-color:rgba(255,59,99,.35)!important;color:#FF3B63!important}
 .m-tmpl-btn-xfinit:hover{background:rgba(255,59,99,.08)!important;border-color:rgba(255,59,99,.6)!important}
-/* ── DOCX template dropdown (table/card rows) — fixed-position portal ── */
+/* ── DOCX template inline row/card expansion ── */
 .row-docx-dd{display:inline-flex;align-items:center}
 .row-docx-btn{display:inline-flex;align-items:center;gap:3px}
 .row-docx-btn .rd-arr{font-size:8px;opacity:.7;transition:transform .2s}
 .row-docx-btn.open .rd-arr{transform:rotate(180deg)}
-/* Portal dropdown — appended to <body>, positioned via JS */
-#docxPortal{position:fixed;z-index:9999;
-  background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;
-  min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,.55);
-  padding:5px;display:none;flex-direction:column;
-  animation:ddFadeIn .12s ease}
-#docxPortal.open{display:flex}
-@keyframes ddFadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.ddi{display:flex;align-items:center;gap:10px;padding:9px 10px;
-  border-radius:7px;cursor:pointer;text-decoration:none;
-  color:var(--tf);transition:background .12s}
-.ddi:hover{background:var(--bg3)}
-.ddi-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;
-  justify-content:center;background:rgba(255,255,255,.06);flex-shrink:0;font-size:13px}
-.ddi-text{display:flex;flex-direction:column;gap:1px}
-.ddi-name{font-size:13px;font-weight:500;line-height:1.2}
-.ddi-desc{font-size:10px;color:var(--td);line-height:1.2}
-.ddi-xfinit .ddi-icon{background:rgba(255,59,99,.12)}
-.ddi-xfinit .ddi-name{color:#FF3B63}
-.row-docx-sep{height:1px;background:var(--bdr);margin:4px 0}
+/* Expansion row inserted after table <tr> */
+.docx-expand-tr td{padding:0!important;border-top:none!important}
+.docx-expand-inner{display:flex;align-items:center;gap:8px;
+  padding:8px 14px 10px 14px;
+  background:var(--bg2);border-bottom:1px solid var(--bdr);
+  animation:expandDown .14s ease}
+@keyframes expandDown{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+.docx-expand-label{font-size:11px;color:var(--td);margin-right:4px;white-space:nowrap}
+.docx-tmpl-btn{display:inline-flex;align-items:center;gap:7px;
+  padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;
+  border:1px solid var(--bdr);background:var(--bg3);color:var(--tf);
+  text-decoration:none;cursor:pointer;transition:background .12s,border-color .12s;
+  white-space:nowrap}
+.docx-tmpl-btn:hover{background:var(--bg1);border-color:rgba(255,255,255,.25)}
+.docx-tmpl-btn-xfinit{border-color:rgba(255,59,99,.4)!important;color:#FF3B63!important}
+.docx-tmpl-btn-xfinit:hover{background:rgba(255,59,99,.08)!important;border-color:#FF3B63!important}
+.docx-tmpl-btn .dtb-sub{font-size:10px;opacity:.6;font-weight:400}
+.docx-expand-close{margin-left:auto;background:none;border:none;cursor:pointer;
+  color:var(--td);padding:4px 6px;border-radius:5px;font-size:12px;transition:color .12s}
+.docx-expand-close:hover{color:var(--tf)}
+/* Card variant */
+.docx-card-expand{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:8px 0 4px;border-top:1px solid var(--bdr);margin-top:6px;
+  animation:expandDown .14s ease}
 </style>
 </head>
 <body>
 
 <div id="toasts"></div>
 
-<!-- DOCX template portal dropdown (shared, fixed position) -->
-<div id="docxPortal">
-  <a class="ddi" id="docxPortalStd" href="#">
-    <div class="ddi-icon"><i class="fa fa-file-word"></i></div>
-    <div class="ddi-text"><div class="ddi-name">Standard</div><div class="ddi-desc">รูปแบบมาตรฐาน</div></div>
-  </a>
-  <div class="row-docx-sep"></div>
-  <a class="ddi ddi-xfinit" id="docxPortalXfinit" href="#">
-    <div class="ddi-icon"><img src="/static/xfinit_logo.png" style="height:15px;object-fit:contain"></div>
-    <div class="ddi-text"><div class="ddi-name">XFINIT v1</div><div class="ddi-desc">รายงานองค์กร</div></div>
-  </a>
-</div>
 
 <!-- ══ OVERLAYS ══════════════════════════════════════════ -->
 
@@ -1716,52 +1708,59 @@ function openArtModal(id){
 function closeArtModal(){document.getElementById('artModal').classList.remove('show');document.body.style.overflow=''}
 document.getElementById('artModal').addEventListener('click',function(e){if(e.target===this)closeArtModal()});
 
-/* ── DOCX portal dropdown (rows/cards) ── */
-let _docxPortalArticleId = null;
-let _docxPortalBtn = null;
+/* ── DOCX inline row/card expansion ── */
+function _docxExpandHtml(id){
+  return `<div class="docx-expand-inner">
+    <span class="docx-expand-label"><i class="fa fa-file-word" style="margin-right:4px"></i>เลือก Template:</span>
+    <a href="/download-docx/${id}" class="docx-tmpl-btn">
+      <i class="fa fa-file-word"></i> Standard <span class="dtb-sub">รูปแบบมาตรฐาน</span>
+    </a>
+    <a href="/download-docx/${id}/xfinit" class="docx-tmpl-btn docx-tmpl-btn-xfinit">
+      <img src="/static/xfinit_logo.png" style="height:13px;object-fit:contain"> XFINIT v1 <span class="dtb-sub">รายงานองค์กร</span>
+    </a>
+    <button class="docx-expand-close" onclick="closeDocxExpand()" title="ปิด"><i class="fa fa-xmark"></i></button>
+  </div>`;
+}
 
 function toggleDocxPortal(e, id){
   e.stopPropagation();
   const btn = e.currentTarget;
-  const portal = document.getElementById('docxPortal');
-  // Toggle: close if same button
-  if(_docxPortalArticleId === id && portal.classList.contains('open')){
-    closeDocxPortal(); return;
+  // Check if already open for this id
+  const existing = document.getElementById('docxExpandRow_'+id) || document.getElementById('docxExpandCard_'+id);
+  if(existing){ closeDocxExpand(); return; }
+  closeDocxExpand(); // close any other open expansion
+
+  // Table row expansion
+  const tr = btn.closest('tr');
+  if(tr){
+    const expandTr = document.createElement('tr');
+    expandTr.id = 'docxExpandRow_'+id;
+    expandTr.className = 'docx-expand-tr';
+    const td = document.createElement('td');
+    td.colSpan = tr.querySelectorAll('td').length || 6;
+    td.innerHTML = _docxExpandHtml(id);
+    expandTr.appendChild(td);
+    tr.parentNode.insertBefore(expandTr, tr.nextSibling);
+    btn.classList.add('open');
+    return;
   }
-  // Position portal below the button using fixed coords
-  const rect = btn.getBoundingClientRect();
-  const pw = 210; // min-width of portal
-  let left = rect.right - pw;
-  if(left < 8) left = 8;
-  let top = rect.bottom + 6;
-  // Flip upward if not enough space below
-  if(top + 120 > window.innerHeight) top = rect.top - 126;
-  portal.style.left = left + 'px';
-  portal.style.top  = top  + 'px';
-  // Wire up links
-  document.getElementById('docxPortalStd').href   = '/download-docx/' + id;
-  document.getElementById('docxPortalXfinit').href = '/download-docx/' + id + '/xfinit';
-  // Mark active button
-  if(_docxPortalBtn) _docxPortalBtn.classList.remove('open');
-  btn.classList.add('open');
-  _docxPortalBtn = btn;
-  _docxPortalArticleId = id;
-  portal.classList.add('open');
+  // Card expansion
+  const card = btn.closest('.acard');
+  if(card){
+    const div = document.createElement('div');
+    div.id = 'docxExpandCard_'+id;
+    div.className = 'docx-card-expand';
+    div.innerHTML = _docxExpandHtml(id);
+    const actions = card.querySelector('.acard-actions');
+    if(actions) actions.appendChild(div);
+    btn.classList.add('open');
+  }
 }
 
-function closeDocxPortal(){
-  const portal = document.getElementById('docxPortal');
-  if(portal) portal.classList.remove('open');
-  if(_docxPortalBtn){ _docxPortalBtn.classList.remove('open'); _docxPortalBtn=null; }
-  _docxPortalArticleId = null;
+function closeDocxExpand(){
+  document.querySelectorAll('[id^="docxExpandRow_"],[id^="docxExpandCard_"]').forEach(el=>el.remove());
+  document.querySelectorAll('.row-docx-btn.open').forEach(b=>b.classList.remove('open'));
 }
-
-document.addEventListener('click', function(e){
-  if(!e.target.closest('#docxPortal') && !e.target.closest('.row-docx-btn'))
-    closeDocxPortal();
-});
-// Close on scroll so portal doesn't float away
-document.addEventListener('scroll', closeDocxPortal, true);
 
 /* ── Copy buttons ── */
 function copySection(elId){
