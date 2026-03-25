@@ -3,111 +3,92 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Login – CyberSec Intelligence</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<title>Login — CyberSec Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{
-  font-family:'Inter','Sarabun',sans-serif;
-  background:#09090b;
-  min-height:100vh;
-  display:flex;align-items:center;justify-content:center;
-  color:#fafafa;
-}
-.card{
-  width:100%;max-width:380px;
-  background:#09090b;
-  border:1px solid #27272a;
-  border-radius:12px;
-  padding:32px;
-  box-shadow:0 8px 32px rgba(0,0,0,0.5);
-}
-.logo{
-  display:flex;align-items:center;gap:12px;
-  margin-bottom:28px;justify-content:center;
-}
-.logo-icon{
-  width:40px;height:40px;
-  border-radius:8px;
-  background:#18181b;
-  border:1px solid #27272a;
-  display:flex;align-items:center;justify-content:center;
-  font-size:18px;color:#fafafa;
-}
-.logo-title{font-size:14px;font-weight:700;letter-spacing:.05em;color:#fafafa}
-.logo-sub{font-size:12px;color:#71717a;margin-top:1px}
-h2{font-size:22px;font-weight:700;color:#fafafa;margin-bottom:4px;text-align:center}
-.sub{font-size:13px;color:#71717a;text-align:center;margin-bottom:24px}
-label{
-  display:block;font-size:13px;font-weight:500;
-  color:#a1a1aa;margin-bottom:6px;
-}
-.inp-wrap{position:relative;margin-bottom:16px}
-input[type=password],input[type=text]{
-  width:100%;padding:10px 40px 10px 12px;
-  background:transparent;
-  border:1px solid #27272a;
-  border-radius:6px;color:#fafafa;font-size:14px;
-  font-family:'Inter','Sarabun',sans-serif;outline:none;
-  transition:border-color .15s,box-shadow .15s;
-}
-input:focus{border-color:#3f3f46;box-shadow:0 0 0 2px rgba(63,63,70,.3)}
-.eye{
-  position:absolute;right:10px;top:50%;transform:translateY(-50%);
-  background:none;border:none;color:#71717a;cursor:pointer;font-size:14px;
-  transition:color .15s;padding:4px;
-}
-.eye:hover{color:#a1a1aa}
-.err{
-  padding:10px 12px;
-  background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);
-  border-radius:6px;font-size:13px;color:#fca5a5;
-  display:flex;align-items:center;gap:8px;margin-bottom:16px;
-}
-button[type=submit]{
-  width:100%;padding:10px;border:none;border-radius:6px;
-  background:#fafafa;
-  color:#09090b;font-size:14px;font-weight:600;
-  cursor:pointer;transition:background .15s;
-  font-family:'Inter','Sarabun',sans-serif;
-  margin-top:4px;
-}
-button[type=submit]:hover{background:#e4e4e7}
-.hint{margin-top:20px;text-align:center;font-size:12px;color:#52525b;
-  display:flex;align-items:center;justify-content:center;gap:5px}
-hr{border:none;border-top:1px solid #27272a;margin:24px 0}
+:root{--bg:#09090b;--sf:#18181b;--b:#27272a;--cyan:#60a5fa;--t:#fafafa;--tm:#a1a1aa;--td:#71717a}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter','Sarabun',sans-serif;background:var(--bg);color:var(--t);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:14px}
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 80% at 50% -20%,rgba(96,165,250,.15),transparent),
+             radial-gradient(ellipse 60% 60% at 80% 80%,rgba(168,85,247,.08),transparent);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(96,165,250,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(96,165,250,.04) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0}
+.card{position:relative;z-index:1;width:100%;max-width:420px;
+  background:rgba(24,24,27,.85);border:1px solid var(--b);border-radius:16px;
+  padding:40px;backdrop-filter:blur(12px);box-shadow:0 0 60px rgba(96,165,250,.08)}
+.logo{text-align:center;margin-bottom:32px}
+.logo-icon{width:56px;height:56px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(96,165,250,.2),rgba(168,85,247,.2));
+  border:1px solid rgba(96,165,250,.3);display:inline-flex;align-items:center;
+  justify-content:center;font-size:22px;color:var(--cyan);
+  box-shadow:0 0 20px rgba(96,165,250,.2);margin-bottom:16px}
+.logo-title{font-size:20px;font-weight:700;letter-spacing:.03em}
+.logo-sub{font-size:12px;color:var(--tm);margin-top:4px}
+.step-badge{display:inline-flex;align-items:center;gap:6px;
+  background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.2);
+  border-radius:20px;padding:4px 12px;font-size:11px;color:var(--cyan);
+  margin-bottom:24px;font-family:'JetBrains Mono',monospace}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--tm);
+  margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.field-wrap{position:relative}
+.field input{width:100%;padding:10px 14px;background:rgba(39,39,42,.6);
+  border:1px solid var(--b);border-radius:8px;color:var(--t);font-size:14px;
+  font-family:inherit;outline:none;transition:border .2s}
+.field input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(96,165,250,.15)}
+.eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  background:none;border:none;color:var(--td);cursor:pointer;padding:4px;font-size:14px}
+.eye:hover{color:var(--t)}
+.btn-login{width:100%;padding:12px;border:none;border-radius:8px;
+  background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;
+  font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .1s;
+  margin-top:8px;letter-spacing:.03em}
+.btn-login:hover{opacity:.9}
+.btn-login:active{transform:scale(.98)}
+.error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  border-radius:8px;padding:10px 14px;color:#fca5a5;font-size:13px;
+  margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.footer{text-align:center;margin-top:24px;font-size:11px;color:var(--td)}
+.footer span{color:rgba(96,165,250,.6)}
 </style>
 </head>
 <body>
 <div class="card">
   <div class="logo">
     <div class="logo-icon"><i class="fa fa-shield-halved"></i></div>
-    <div>
-      <div class="logo-title">CyberSec Intelligence</div>
-      <div class="logo-sub">ระบบแปลข่าว Cybersecurity</div>
-    </div>
+    <div class="logo-title">CyberSec Intelligence</div>
+    <div class="logo-sub">ระบบแปลข่าวความมั่นคงปลอดภัยไซเบอร์</div>
   </div>
-  <hr/>
-  <h2>เข้าสู่ระบบ</h2>
-  <p class="sub">กรุณาใส่รหัสผ่านเพื่อเข้าใช้งาน</p>
-  {% if error %}<div class="err"><i class="fa fa-circle-xmark"></i>{{ error }}</div>{% endif %}
+  <div style="text-align:center">
+    <span class="step-badge"><i class="fa fa-lock"></i>&nbsp;Step 1 / 2 — เข้าสู่ระบบ</span>
+  </div>
+  {% if error %}
+  <div class="error"><i class="fa fa-circle-exclamation"></i>&nbsp;{{ error }}</div>
+  {% endif %}
   <form method="POST">
-    <label for="pw">รหัสผ่าน</label>
-    <div class="inp-wrap">
-      <input type="password" id="pw" name="password" placeholder="••••••••" autofocus required/>
-      <button type="button" class="eye" onclick="togglePw()"><i class="fa fa-eye" id="eyeIco"></i></button>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" name="username" autocomplete="username" placeholder="ชื่อผู้ใช้" required autofocus/>
     </div>
-    <button type="submit"><i class="fa fa-right-to-bracket"></i> เข้าสู่ระบบ</button>
+    <div class="field">
+      <label>Password</label>
+      <div class="field-wrap">
+        <input type="password" name="password" id="pw" autocomplete="current-password" placeholder="รหัสผ่าน" required/>
+        <button type="button" class="eye" onclick="togglePw()"><i class="fa fa-eye" id="eyeIco"></i></button>
+      </div>
+    </div>
+    <button type="submit" class="btn-login"><i class="fa fa-arrow-right-to-bracket"></i>&nbsp;เข้าสู่ระบบ</button>
   </form>
-  <p class="hint"><i class="fa fa-lock"></i> ระบบเข้ารหัสการสื่อสาร</p>
+  <div class="footer">ขั้นตอนถัดไป: ยืนยัน <span>Google Authenticator OTP</span></div>
 </div>
 <script>
-function togglePw(){
-  const f=document.getElementById('pw'),i=document.getElementById('eyeIco');
-  f.type=f.type==='password'?'text':'password';
-  i.className=f.type==='password'?'fa fa-eye':'fa fa-eye-slash';
-}
+function togglePw(){const i=document.getElementById('pw'),ico=document.getElementById('eyeIco');
+  if(i.type==='password'){i.type='text';ico.className='fa fa-eye-slash'}
+  else{i.type='password';ico.className='fa fa-eye'}}
 </script>
 </body>
 </html>

@@ -7,8 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
-> Features planned but not yet released — see [ROADMAP.md](ROADMAP.md)
+## [1.1.0] — 2026-03-25
+
+### 🔐 Enterprise Authentication & User Management
+
+#### Added
+- **Username + Password Login** — Multi-step login flow: Step 1 username/password → Step 2 TOTP (Google Authenticator)
+- **TOTP 2FA (Google Authenticator)** — Time-based One-Time Password ด้วย pyotp, QR Code setup ครั้งแรกผ่าน UI
+- **First-Time TOTP Setup** — ผู้ใช้ใหม่จะถูก redirect ไปหน้า Setup Google Authenticator อัตโนมัติ
+- **Role-Based Access Control** — บทบาท `admin` และ `user` ควบคุมสิทธิ์การใช้งาน
+- **User Management (Admin Only)** — เพิ่ม/ลบ/ระงับผู้ใช้, เปลี่ยน Role, Reset TOTP ผ่าน UI
+- **System Configuration (Admin Only)** — ตั้งค่า Server-side API Key, AI Model, SMTP ผ่าน UI
+- **Server-side API Key** — เก็บ API Key ใน SQLite `system_config` — ผู้ใช้ทั่วไปไม่ต้องระบุ Key เอง
+- **SMTP Configuration** — ตั้งค่า SMTP Server/Port/Username/Password/From สำหรับ Email Alerts
+- **Change Password** — ทุก Role เปลี่ยนรหัสผ่านตัวเองได้ผ่านหน้า Settings
+- **Default Admin Bootstrap** — สร้าง `admin` / `Admin@1234` อัตโนมัติเมื่อ run ครั้งแรก
+- **Login Pages** — หน้า Login สวยงาม cyberpunk style พร้อม Step indicator
+- **Session Security** — Session key `authed`, `user_id`, `username`, `role`; pending keys สำหรับ 2FA flow
+
+#### Changed
+- **Settings Tab** → แยกเป็น System Configuration (admin only) + Change Password (ทุก user)
+- **Translation API** — fallback ใช้ server-side API Key ถ้า client ไม่ได้ส่ง key มา
+- **Navbar** — แสดง username, Role badge (Admin), ปุ่ม Logout
+
+#### Technical Details
+- New dependencies: `bcrypt>=4.0.0`, `pyotp>=2.9.0`, `qrcode[pil]>=7.4.2`, `Pillow>=10.0.0`
+- New DB tables: `users` (id, username, password_hash, totp_secret, role, is_active, totp_verified, created_at, last_login)
+- New DB table: `system_config` (key/value pairs)
+- New routes: `/login`, `/login/totp`, `/login/setup-totp`, `/logout`
+- New API routes: `GET/POST /api/system-config`, `GET/POST /api/users`, `PATCH/DELETE /api/users/<id>`, `POST /api/me/password`
 
 ---
 
@@ -61,5 +88,6 @@ This project uses **Semantic Versioning**: `MAJOR.MINOR.PATCH`
 
 ---
 
-[Unreleased]: https://github.com/zildjiean/cybersec-news-intelligence/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/zildjiean/cybersec-news-intelligence/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/zildjiean/cybersec-news-intelligence/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/zildjiean/cybersec-news-intelligence/releases/tag/v1.0.0

@@ -2,14 +2,18 @@
 CyberSec News Intelligence – Flask Application
 แปลข่าว Cybersecurity เป็นภาษาไทย และสร้างรายงาน PDF สำหรับผู้บริหาร / CISO
 """
-__version__      = "1.0.0"
+__version__      = "1.1.0"
 __release_date__ = "2026-03-25"
 
-import os, re, json, uuid, threading
+import os, re, json, uuid, threading, io, base64
 from datetime import datetime
 from functools import wraps
 from flask import (Flask, render_template, request, jsonify,
                    send_file, session, redirect, url_for)
+
+import bcrypt as _bcrypt
+import pyotp
+import qrcode
 
 from database import Database
 from scraper import scrape_article
@@ -21,7 +25,8 @@ PDF_DIR  = os.path.join(BASE_DIR, 'pdfs')
 os.makedirs(PDF_DIR, exist_ok=True)
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
+app.config['PERMANENT_SESSION_LIFETIME'] = 28800  # 8 hours
 
 # ── DB (with fallback) ──────────────────────────────────────────────────────
 _DB_PRIMARY  = os.path.join(BASE_DIR, 'cybersec_news.db')
@@ -32,19 +37,21 @@ try:
 except Exception:
     db = Database(_DB_FALLBACK)
 
-# ── Config ──────────────────────────────────────────────────────────────────
-CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
+# ── Default admin on first run ───────────────────────────────────────────────
+def _init_default_admin():
+    if db.get_user_count() == 0:
+        _default_pw  = 'Admin@1234'
+        _pw_hash     = _bcrypt.hashpw(_default_pw.encode(), _bcrypt.gensalt()).decode()
+        _totp_secret = pyotp.random_base32()
+        db.create_user('admin', _pw_hash, _totp_secret, role='admin')
+        print('=' * 60)
+        print('  [!] Default admin created')
+        print(f'  Username : admin')
+        print(f'  Password : {_default_pw}')
+        print('  Please change password after first login')
+        print('=' * 60)
 
-def load_config() -> dict:
-    try:
-        with open(CONFIG_PATH) as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-def save_config(cfg: dict):
-    with open(CONFIG_PATH, 'w') as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
+_init_default_admin()
 
 # ── In-memory job queue ─────────────────────────────────────────────────────
 _jobs: dict[str, dict] = {}
@@ -60,13 +67,24 @@ def _get_job(jid):
     with _jobs_lock:
         return dict(_jobs.get(jid, {}))
 
-# ── Auth middleware ─────────────────────────────────────────────────────────
+# ── Auth decorators ─────────────────────────────────────────────────────────
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        cfg = load_config()
-        if cfg.get('auth_enabled') and not session.get('authed'):
+        if not session.get('authed'):
+            if request.is_json:
+                return jsonify(error='Unauthorized'), 401
             return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('role') != 'admin':
+            if request.is_json:
+                return jsonify(error='Forbidden — Admin only'), 403
+            return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated
 
@@ -76,23 +94,96 @@ def safe_filename(title: str, aid: int) -> str:
     ts   = datetime.now().strftime('%Y%m%d_%H%M%S')
     return f'cybersec_{aid}_{ts}.pdf'
 
+def _make_qr_b64(uri: str) -> str:
+    qr = qrcode.QRCode(version=1, box_size=6, border=4)
+    qr.add_data(uri)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color='black', back_color='white')
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    return base64.b64encode(buf.getvalue()).decode()
+
 # ════════════════════════════════════════════════════════════════════════════
 #  AUTH ROUTES
 # ════════════════════════════════════════════════════════════════════════════
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
-    cfg = load_config()
-    if not cfg.get('auth_enabled'):
+    if session.get('authed'):
         return redirect(url_for('index'))
     err = None
     if request.method == 'POST':
-        pw = request.form.get('password', '')
-        if pw == cfg.get('auth_password', 'cybersec2024'):
-            session['authed'] = True
-            return redirect(url_for('index'))
-        err = 'รหัสผ่านไม่ถูกต้อง'
+        username = (request.form.get('username') or '').strip()
+        password = (request.form.get('password') or '')
+        user = db.get_user_by_username(username)
+        if user and user.get('is_active') and \
+                _bcrypt.checkpw(password.encode(), user['password_hash'].encode()):
+            # Password OK → proceed to TOTP step
+            session['_pending_uid']  = user['id']
+            session['_pending_name'] = user['username']
+            session['_pending_role'] = user['role']
+            if not user.get('totp_verified'):
+                return redirect(url_for('setup_totp'))
+            return redirect(url_for('login_totp'))
+        err = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง หรือบัญชีถูกระงับ'
     return render_template('login.html', error=err)
+
+@app.route('/login/totp', methods=['GET', 'POST'])
+def login_totp():
+    uid = session.get('_pending_uid')
+    if not uid:
+        return redirect(url_for('login_page'))
+    err = None
+    if request.method == 'POST':
+        token = (request.form.get('totp_code') or '').strip().replace(' ', '')
+        user  = db.get_user(uid)
+        if user and pyotp.TOTP(user['totp_secret']).verify(token, valid_window=1):
+            _finalize_login(user)
+            return redirect(url_for('index'))
+        err = 'รหัส OTP ไม่ถูกต้อง กรุณาตรวจสอบเวลาบนอุปกรณ์และลองใหม่'
+    return render_template('login_totp.html',
+                           username=session.get('_pending_name'), error=err)
+
+@app.route('/login/setup-totp', methods=['GET', 'POST'])
+def setup_totp():
+    uid = session.get('_pending_uid')
+    if not uid:
+        return redirect(url_for('login_page'))
+    user = db.get_user(uid)
+    if not user:
+        return redirect(url_for('login_page'))
+
+    totp = pyotp.TOTP(user['totp_secret'])
+    uri  = totp.provisioning_uri(
+        name=user['username'], issuer_name='CyberSec Intelligence')
+    qr_b64 = _make_qr_b64(uri)
+
+    err = None
+    if request.method == 'POST':
+        token = (request.form.get('totp_code') or '').strip().replace(' ', '')
+        if totp.verify(token, valid_window=1):
+            db.mark_totp_verified(uid)
+            user['totp_verified'] = 1
+            _finalize_login(user)
+            return redirect(url_for('index'))
+        err = 'รหัส OTP ไม่ถูกต้อง กรุณาลองสแกน QR code ใหม่'
+    return render_template('setup_totp.html',
+                           qr_b64=qr_b64,
+                           totp_secret=user['totp_secret'],
+                           username=user['username'],
+                           error=err)
+
+def _finalize_login(user: dict):
+    pending_uid  = session.pop('_pending_uid',  None)
+    pending_name = session.pop('_pending_name', None)
+    pending_role = session.pop('_pending_role', None)
+    session.clear()
+    session.permanent = True
+    session['authed']   = True
+    session['user_id']  = user['id']
+    session['username'] = user['username']
+    session['role']     = user['role']
+    db.update_last_login(user['id'])
 
 @app.route('/logout')
 def logout():
@@ -106,9 +197,14 @@ def logout():
 @app.route('/')
 @login_required
 def index():
+    cfg = db.get_system_config()
+    has_server_key = bool(cfg.get('api_key'))
     return render_template('index.html',
                            app_version=__version__,
-                           release_date=__release_date__)
+                           release_date=__release_date__,
+                           current_user=session.get('username'),
+                           current_role=session.get('role', 'user'),
+                           has_server_key=has_server_key)
 
 @app.route('/api/version')
 def api_version():
@@ -155,7 +251,6 @@ def _translation_worker(jid, url, api_key, api_type, model):
             'pdf_filename':      pdf_name,
         })
 
-        # Rename with real ID
         final_name = safe_filename(translated['thai_title'], aid)
         final_path = os.path.join(PDF_DIR, final_name)
 
@@ -192,8 +287,17 @@ def start_translate():
     api_type = (data.get('api_type') or 'gemini').lower()
     model    = (data.get('model') or '').strip()
 
-    if not url:    return jsonify({'error': 'กรุณาระบุ URL'}), 400
-    if not api_key: return jsonify({'error': 'กรุณาระบุ API Key'}), 400
+    if not url:
+        return jsonify({'error': 'กรุณาระบุ URL'}), 400
+
+    # ── ถ้าไม่มี api_key จาก client ให้ใช้ server-side key ──
+    if not api_key:
+        api_key  = db.get_config_value('api_key')
+        api_type = db.get_config_value('api_type') or api_type
+        model    = db.get_config_value('api_model') or model
+
+    if not api_key:
+        return jsonify({'error': 'กรุณาระบุ API Key หรือให้ Admin ตั้งค่า Server API Key'}), 400
 
     existing = db.get_article_by_url(url)
     if existing:
@@ -296,7 +400,6 @@ def _ensure_pdf(aid: int) -> str | None:
     pdf = a.get('pdf_path') or ''
     if pdf and os.path.exists(pdf):
         return pdf
-    # Re-generate
     translated = {k: a.get(k, '') for k in (
         'thai_title','thai_summary','thai_content',
         'thai_impact','thai_recommendation','severity',
@@ -396,7 +499,6 @@ def rss_delete(fid):
 @app.route('/api/rss/run', methods=['POST'])
 @login_required
 def rss_run_now():
-    """Trigger RSS monitor in background thread."""
     def _run():
         try:
             import rss_monitor
@@ -407,29 +509,120 @@ def rss_run_now():
     return jsonify({'success': True, 'message': 'RSS monitor เริ่มทำงานแล้ว (background)'})
 
 # ════════════════════════════════════════════════════════════════════════════
-#  CONFIG / SETTINGS
+#  SYSTEM CONFIG  (Admin only)
 # ════════════════════════════════════════════════════════════════════════════
 
-@app.route('/api/config', methods=['GET'])
+@app.route('/api/system-config', methods=['GET'])
 @login_required
-def get_config():
-    cfg = load_config()
-    # Never return password
-    safe = {k: v for k, v in cfg.items() if k != 'auth_password'}
-    safe['auth_password_set'] = bool(cfg.get('auth_password'))
+@admin_required
+def get_system_config():
+    cfg = db.get_system_config()
+    # Mask secrets before sending to frontend
+    safe = dict(cfg)
+    if safe.get('api_key'):
+        safe['api_key'] = safe['api_key'][:6] + '••••••••'
+    if safe.get('smtp_password'):
+        safe['smtp_password'] = '••••••••'
+    safe['api_key_set']      = bool(cfg.get('api_key'))
+    safe['smtp_password_set'] = bool(cfg.get('smtp_password'))
     return jsonify(safe)
 
-@app.route('/api/config', methods=['POST'])
+@app.route('/api/system-config', methods=['POST'])
 @login_required
-def set_config():
+@admin_required
+def set_system_config():
     data = request.get_json(silent=True) or {}
-    cfg  = load_config()
-    allowed = ('rss_api_key','rss_api_type','rss_model','rss_max_per_feed',
-               'auth_enabled','auth_password')
-    for k in allowed:
-        if k in data:
-            cfg[k] = data[k]
-    save_config(cfg)
+    # Strip placeholder masks — don't overwrite real values with masks
+    if data.get('api_key', '').endswith('••••••••'):
+        data.pop('api_key', None)
+    if data.get('smtp_password') == '••••••••':
+        data.pop('smtp_password', None)
+    db.update_system_config(data)
+    return jsonify({'success': True})
+
+# ════════════════════════════════════════════════════════════════════════════
+#  USER MANAGEMENT  (Admin only)
+# ════════════════════════════════════════════════════════════════════════════
+
+@app.route('/api/users', methods=['GET'])
+@login_required
+@admin_required
+def users_list():
+    return jsonify(db.get_all_users())
+
+@app.route('/api/users', methods=['POST'])
+@login_required
+@admin_required
+def users_create():
+    data     = request.get_json(silent=True) or {}
+    username = (data.get('username') or '').strip()
+    password = (data.get('password') or '').strip()
+    role     = data.get('role', 'user')
+
+    if not username or not password:
+        return jsonify({'error': 'username และ password จำเป็น'}), 400
+    if role not in ('admin', 'user'):
+        return jsonify({'error': 'role ต้องเป็น admin หรือ user'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'password ต้องมีอย่างน้อย 8 ตัวอักษร'}), 400
+
+    if db.get_user_by_username(username):
+        return jsonify({'error': f'username "{username}" ถูกใช้แล้ว'}), 409
+
+    pw_hash     = _bcrypt.hashpw(password.encode(), _bcrypt.gensalt()).decode()
+    totp_secret = pyotp.random_base32()
+    uid = db.create_user(username, pw_hash, totp_secret, role)
+    return jsonify({'success': True, 'id': uid,
+                    'message': f'สร้างผู้ใช้ "{username}" เรียบร้อย — '
+                               'ผู้ใช้ต้องตั้งค่า Google Authenticator เมื่อ login ครั้งแรก'})
+
+@app.route('/api/users/<int:uid>', methods=['PATCH'])
+@login_required
+@admin_required
+def users_update(uid):
+    data = request.get_json(silent=True) or {}
+    # Prevent admin from demoting/deactivating themselves
+    if uid == session.get('user_id') and \
+            ('role' in data or 'is_active' in data):
+        return jsonify({'error': 'ไม่สามารถแก้ไข role หรือ status ของตัวเองได้'}), 400
+
+    if 'is_active' in data:
+        db.update_user(uid, is_active=1 if data['is_active'] else 0)
+    if 'role' in data and data['role'] in ('admin', 'user'):
+        db.update_user(uid, role=data['role'])
+    if 'password' in data:
+        if len(data['password']) < 8:
+            return jsonify({'error': 'password ต้องมีอย่างน้อย 8 ตัวอักษร'}), 400
+        pw_hash = _bcrypt.hashpw(data['password'].encode(), _bcrypt.gensalt()).decode()
+        db.update_user(uid, password_hash=pw_hash)
+    if data.get('reset_totp'):
+        new_secret = pyotp.random_base32()
+        db.update_user(uid, totp_secret=new_secret, totp_verified=0)
+    return jsonify({'success': True})
+
+@app.route('/api/users/<int:uid>', methods=['DELETE'])
+@login_required
+@admin_required
+def users_delete(uid):
+    if uid == session.get('user_id'):
+        return jsonify({'error': 'ไม่สามารถลบบัญชีของตัวเองได้'}), 400
+    db.delete_user(uid)
+    return jsonify({'success': True})
+
+# ── Change own password ──────────────────────────────────────────────────────
+@app.route('/api/me/password', methods=['POST'])
+@login_required
+def change_own_password():
+    data     = request.get_json(silent=True) or {}
+    old_pw   = (data.get('old_password') or '')
+    new_pw   = (data.get('new_password') or '')
+    user     = db.get_user(session['user_id'])
+    if not _bcrypt.checkpw(old_pw.encode(), user['password_hash'].encode()):
+        return jsonify({'error': 'รหัสผ่านเดิมไม่ถูกต้อง'}), 400
+    if len(new_pw) < 8:
+        return jsonify({'error': 'รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'}), 400
+    pw_hash = _bcrypt.hashpw(new_pw.encode(), _bcrypt.gensalt()).decode()
+    db.update_user(session['user_id'], password_hash=pw_hash)
     return jsonify({'success': True})
 
 # ════════════════════════════════════════════════════════════════════════════

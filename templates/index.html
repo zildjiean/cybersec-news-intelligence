@@ -557,6 +557,36 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
   .srchwrap{flex:1;min-width:0}
   .cgrid{grid-template-columns:1fr}
 }
+
+/* ── NAV USER CHIP ── */
+.nav-user{display:flex;align-items:center;gap:8px;background:rgba(39,39,42,.6);
+  border:1px solid var(--b);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--tm)}
+.nav-role-badge{font-size:10px;background:rgba(96,165,250,.15);color:var(--cyan);
+  border:1px solid rgba(96,165,250,.25);border-radius:4px;padding:1px 6px;font-weight:600;letter-spacing:.04em}
+.nav-logout{color:var(--td);font-size:13px;text-decoration:none;
+  margin-left:2px;transition:color .15s;display:flex;align-items:center}
+.nav-logout:hover{color:var(--red)}
+:root[data-theme="light"] .nav-user{background:rgba(244,244,245,.8)}
+
+/* ── USER MANAGEMENT TABLE ── */
+.tbl-wrap{overflow-x:auto;border-radius:var(--r8);border:1px solid var(--b)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl thead{background:var(--sf)}
+.tbl thead tr{border-bottom:1px solid var(--b)}
+.tbl th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.8px;color:var(--td);white-space:nowrap}
+.tbl tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background .1s}
+.tbl tbody tr:last-child{border:none}
+.tbl tbody tr:hover{background:rgba(255,255,255,.02)}
+.tbl td{padding:10px 12px;vertical-align:middle}
+:root[data-theme="light"] .tbl tbody tr{border-bottom-color:rgba(0,0,0,.04)}
+:root[data-theme="light"] .tbl tbody tr:hover{background:rgba(0,0,0,.02)}
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;
+  border-radius:20px;font-size:11px;font-weight:600}
+.status-active{background:rgba(34,197,94,.08);color:#86efac;border:1px solid rgba(34,197,94,.2)}
+.status-inactive{background:rgba(113,113,122,.08);color:#a1a1aa;border:1px solid rgba(113,113,122,.2)}
+.totp-ok{color:var(--green);font-size:11px}
+.totp-no{color:var(--td);font-size:11px}
 </style>
 </head>
 <body>
@@ -724,6 +754,12 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
       <i class="fa fa-sun" id="themeIco"></i>
     </button>
     <div class="nav-pill"><i class="fa fa-robot"></i> AI Powered</div>
+    <div class="nav-user">
+      <i class="fa fa-user-shield" style="color:var(--cyan)"></i>
+      <span id="navUsername">{{ current_user }}</span>
+      {% if current_role == 'admin' %}<span class="nav-role-badge">Admin</span>{% endif %}
+      <a href="/logout" class="nav-logout" title="Logout"><i class="fa fa-right-from-bracket"></i></a>
+    </div>
   </div>
 </nav>
 
@@ -733,6 +769,7 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
   <button class="tb" onclick="goTab('history',this)"><i class="fa fa-clock-rotate-left"></i> ประวัติ <span class="tb-badge" id="hBadge">0</span></button>
   <button class="tb" onclick="goTab('dashboard',this)"><i class="fa fa-chart-pie"></i> Dashboard</button>
   <button class="tb" onclick="goTab('rss',this)"><i class="fa fa-rss"></i> RSS Monitor</button>
+  {% if current_role == 'admin' %}<button class="tb" onclick="goTab('users',this)" id="tbUsers"><i class="fa fa-users"></i> User Management</button>{% endif %}
   <button class="tb" onclick="goTab('settings',this)"><i class="fa fa-sliders"></i> ตั้งค่า</button>
 </div>
 
@@ -1102,81 +1139,201 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
 
 <!-- ══════════ TAB: ตั้งค่า ══════════ -->
 <div class="tab-content" id="tab-settings">
-  <div class="card">
+  {% if current_role == 'admin' %}
+  <!-- ── System Configuration (Admin Only) ── -->
+  <div class="card" style="border-color:rgba(96,165,250,.2)">
     <div class="ch">
-      <div class="ci ci-c"><i class="fa fa-sliders"></i></div>
+      <div class="ci" style="background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.25)"><i class="fa fa-server" style="color:var(--cyan)"></i></div>
       <div>
-        <div class="ct">การตั้งค่าระบบ</div>
-        <div class="cd">RSS Auto-Monitor, Basic Auth และการตั้งค่าอื่นๆ</div>
+        <div class="ct">System Configuration <span style="font-size:11px;background:rgba(96,165,250,.12);color:var(--cyan);border:1px solid rgba(96,165,250,.25);border-radius:4px;padding:2px 7px;margin-left:6px;vertical-align:middle">Admin Only</span></div>
+        <div class="cd">ตั้งค่า API Key, Model และ SMTP ที่ใช้ทั้งระบบ — ผู้ใช้ทั่วไปไม่จำเป็นต้องระบุ API Key</div>
       </div>
     </div>
 
     <div class="cfg-section">
       <div style="font-size:13px;font-weight:600;color:var(--tm);margin-bottom:12px">
-        <i class="fa fa-rss" style="color:var(--orange);margin-right:6px"></i>RSS Auto-Monitor API
+        <i class="fa fa-robot" style="color:var(--cyan);margin-right:6px"></i>LLM API (Server-side Key)
       </div>
       <div class="row2">
         <div class="fg" style="margin:0">
           <div class="fl">ผู้ให้บริการ</div>
-          <select class="fi" id="cfgProv">
+          <select class="fi" id="sysApiType">
             <option value="gemini">Google Gemini</option>
             <option value="openrouter">OpenRouter</option>
           </select>
         </div>
         <div class="fg" style="margin:0">
           <div class="fl">โมเดล</div>
-          <select class="fi" id="cfgModel">
+          <select class="fi" id="sysApiModel">
             <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+            <option value="gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro</option>
             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
             <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash (OR)</option>
+            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet (OR)</option>
           </select>
         </div>
       </div>
       <div class="fg" style="margin-top:10px">
-        <div class="fl">RSS API Key <span class="req">*</span></div>
+        <div class="fl">API Key <span class="req">*</span></div>
         <div class="fiw">
-          <input type="password" class="fi" id="cfgKey" placeholder="API Key สำหรับ RSS Auto-Monitor"/>
-          <button class="fib" onclick="toggleCfgKey()"><i class="fa fa-eye" id="cfgEye"></i></button>
+          <input type="password" class="fi" id="sysApiKey" placeholder="ใส่ API Key ที่ต้องการให้ระบบใช้…"/>
+          <button class="fib" onclick="toggleField('sysApiKey','sysApiEye')"><i class="fa fa-eye" id="sysApiEye"></i></button>
         </div>
       </div>
       <div class="fg">
-        <div class="fl">จำนวนข้อความสูงสุดต่อ Feed</div>
-        <input type="number" class="fi" id="cfgMax" value="5" min="1" max="20" style="width:110px"/>
+        <div class="fl">จำนวนข้อความสูงสุดต่อ RSS Feed</div>
+        <input type="number" class="fi" id="sysRssMax" value="5" min="1" max="20" style="width:110px"/>
       </div>
     </div>
 
     <div class="cfg-section">
       <div style="font-size:13px;font-weight:600;color:var(--tm);margin-bottom:12px">
-        <i class="fa fa-lock" style="color:var(--purple);margin-right:6px"></i>Basic Authentication
+        <i class="fa fa-envelope" style="color:var(--green);margin-right:6px"></i>SMTP Configuration (Email Alerts)
       </div>
-      <div class="fg">
-        <label class="ro" style="width:fit-content">
-          <input type="checkbox" id="cfgAuth" style="display:none" onchange="toggleAuthFields()"/>
-          <div class="rcirc"></div>
-          <div><div class="rn">เปิดใช้งาน Auth</div><div class="rs">บังคับล็อกอินก่อนเข้าใช้งาน</div></div>
-        </label>
+      <div class="row2">
+        <div class="fg" style="margin:0">
+          <div class="fl">SMTP Server</div>
+          <input type="text" class="fi" id="sysSmtpHost" placeholder="smtp.gmail.com"/>
+        </div>
+        <div class="fg" style="margin:0">
+          <div class="fl">Port</div>
+          <input type="number" class="fi" id="sysSmtpPort" placeholder="587" style="width:100px"/>
+        </div>
       </div>
-      <div id="authFields" style="display:none">
-        <div class="fg">
-          <div class="fl">รหัสผ่านใหม่</div>
+      <div class="row2" style="margin-top:10px">
+        <div class="fg" style="margin:0">
+          <div class="fl">SMTP Username</div>
+          <input type="text" class="fi" id="sysSmtpUser" placeholder="your@email.com"/>
+        </div>
+        <div class="fg" style="margin:0">
+          <div class="fl">SMTP Password</div>
           <div class="fiw">
-            <input type="password" class="fi" id="cfgPw" placeholder="กำหนดรหัสผ่าน…"/>
-            <button class="fib" onclick="toggleCfgPw()"><i class="fa fa-eye" id="pwEye"></i></button>
+            <input type="password" class="fi" id="sysSmtpPw" placeholder="••••••••"/>
+            <button class="fib" onclick="toggleField('sysSmtpPw','sysSmtpEye')"><i class="fa fa-eye" id="sysSmtpEye"></i></button>
           </div>
         </div>
       </div>
+      <div class="fg" style="margin-top:10px">
+        <div class="fl">From Email (แสดงในอีเมลที่ส่ง)</div>
+        <input type="text" class="fi" id="sysSmtpFrom" placeholder="CyberSec Intel <noreply@yourdomain.com>"/>
+      </div>
     </div>
 
-    <div style="display:flex;justify-content:flex-end">
-      <button class="btn bp" onclick="saveConfig()"><i class="fa fa-floppy-disk"></i> บันทึกการตั้งค่า</button>
+    <div style="display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn bg" onclick="loadSysConfig()"><i class="fa fa-rotate-right"></i> โหลดค่าปัจจุบัน</button>
+      <button class="btn bp" onclick="saveSysConfig()"><i class="fa fa-floppy-disk"></i> บันทึก System Config</button>
+    </div>
+  </div>
+
+  <!-- ── Change own password ── -->
+  <div class="card" style="margin-top:12px">
+    <div class="ch">
+      <div class="ci ci-p"><i class="fa fa-key"></i></div>
+      <div><div class="ct">เปลี่ยนรหัสผ่านของฉัน</div><div class="cd">แก้ไขรหัสผ่านสำหรับบัญชี {{ current_user }}</div></div>
+    </div>
+    <div class="row2">
+      <div class="fg" style="margin:0">
+        <div class="fl">รหัสผ่านเดิม</div>
+        <input type="password" class="fi" id="oldPw" placeholder="รหัสผ่านเดิม"/>
+      </div>
+      <div class="fg" style="margin:0">
+        <div class="fl">รหัสผ่านใหม่ (≥ 8 ตัวอักษร)</div>
+        <input type="password" class="fi" id="newPw" placeholder="รหัสผ่านใหม่"/>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button class="btn bp" onclick="changeMyPw()"><i class="fa fa-floppy-disk"></i> เปลี่ยนรหัสผ่าน</button>
+    </div>
+  </div>
+  {% else %}
+  <!-- ── Non-admin: change own password only ── -->
+  <div class="card">
+    <div class="ch">
+      <div class="ci ci-p"><i class="fa fa-key"></i></div>
+      <div><div class="ct">เปลี่ยนรหัสผ่านของฉัน</div><div class="cd">แก้ไขรหัสผ่านสำหรับบัญชี {{ current_user }}</div></div>
+    </div>
+    <div class="row2">
+      <div class="fg" style="margin:0">
+        <div class="fl">รหัสผ่านเดิม</div>
+        <input type="password" class="fi" id="oldPw" placeholder="รหัสผ่านเดิม"/>
+      </div>
+      <div class="fg" style="margin:0">
+        <div class="fl">รหัสผ่านใหม่ (≥ 8 ตัวอักษร)</div>
+        <input type="password" class="fi" id="newPw" placeholder="รหัสผ่านใหม่"/>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button class="btn bp" onclick="changeMyPw()"><i class="fa fa-floppy-disk"></i> เปลี่ยนรหัสผ่าน</button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ══════════ TAB: User Management (Admin Only) ══════════ -->
+{% if current_role == 'admin' %}
+<div class="tab-content" id="tab-users">
+  <div class="card">
+    <div class="ch">
+      <div class="ci" style="background:rgba(168,85,247,.1);border-color:rgba(168,85,247,.25)"><i class="fa fa-users" style="color:var(--purple)"></i></div>
+      <div>
+        <div class="ct">User Management</div>
+        <div class="cd">จัดการบัญชีผู้ใช้ในระบบ — เพิ่ม ลบ แก้ไข Role และ Reset Google Authenticator</div>
+      </div>
+    </div>
+
+    <!-- Add User Form -->
+    <div class="cfg-section" style="border-color:rgba(168,85,247,.15)">
+      <div style="font-size:13px;font-weight:600;color:var(--tm);margin-bottom:12px">
+        <i class="fa fa-user-plus" style="color:var(--purple);margin-right:6px"></i>เพิ่มผู้ใช้ใหม่
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 140px;gap:10px;align-items:end">
+        <div class="fg" style="margin:0">
+          <div class="fl">Username</div>
+          <input type="text" class="fi" id="newUsername" placeholder="username"/>
+        </div>
+        <div class="fg" style="margin:0">
+          <div class="fl">Password (≥ 8 ตัวอักษร)</div>
+          <input type="password" class="fi" id="newUserPw" placeholder="รหัสผ่าน"/>
+        </div>
+        <div class="fg" style="margin:0">
+          <div class="fl">Role</div>
+          <select class="fi" id="newUserRole">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <button class="btn bp" onclick="createUser()"><i class="fa fa-user-plus"></i> สร้างผู้ใช้</button>
+      </div>
+    </div>
+
+    <!-- User List -->
+    <div style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:600;color:var(--tm)"><i class="fa fa-list" style="margin-right:6px"></i>รายชื่อผู้ใช้</div>
+        <button class="btn bg bsm" onclick="loadUsers()"><i class="fa fa-rotate-right"></i> รีเฟรช</button>
+      </div>
+      <div class="tbl-wrap">
+        <table class="tbl" id="userTable">
+          <thead><tr>
+            <th>Username</th><th>Role</th><th>Status</th><th>TOTP</th><th>Last Login</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="userTbody"><tr><td colspan="6" style="text-align:center;color:var(--td);padding:20px">กำลังโหลด...</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
+{% endif %}
 
 </main>
 
 <!-- ══════════════════════════════════════════════ SCRIPT ══════════════════════════════════════════════ -->
 <script>
+/* ── Server-injected config ── */
+const HAS_SERVER_KEY = {{ 'true' if has_server_key else 'false' }};
+
 /* ── State ── */
 let curId=null,dupId=null,allArts=[],hTimer=null,settOpen=false;
 let curView=localStorage.getItem('csi_view')||'table';
@@ -1206,6 +1363,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 /* ── Tabs ── */
+let _tabInited={};
 function goTab(name,btn){
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
@@ -1214,14 +1372,15 @@ function goTab(name,btn){
   if(name==='history'){loadHist()}
   else if(name==='dashboard'){loadDash()}
   else if(name==='rss'){loadRss()}
-  else if(name==='settings'){loadCfg()}
+  else if(name==='settings'){if(!_tabInited.settings){loadSysConfig();_tabInited.settings=true}}
+  else if(name==='users'){loadUsers()}
 }
 
 /* ── Settings ── */
 function toggleSett(){settOpen=!settOpen;document.getElementById('sb').classList.toggle('open',settOpen);document.getElementById('stT').classList.toggle('open',settOpen);document.getElementById('schev').style.transform=settOpen?'rotate(180deg)':''}
 function onProv(){const p=document.querySelector('input[name=prov]:checked')?.value||'gemini';const ms=p==='gemini'?GM:OM;const sel=document.getElementById('fModel');const cur=sel.value;sel.innerHTML=ms.map(m=>`<option value="${m.v}"${m.v===cur?' selected':''}>${m.l}</option>`).join('');updSumm()}
 function onSett(){updSumm()}
-function updSumm(){const p=document.querySelector('input[name=prov]:checked')?.value||'gemini';const k=document.getElementById('fKey').value;const m=document.getElementById('fModel').value.split('/').pop();document.getElementById('ssumm').textContent=`${p==='gemini'?'Gemini':'OpenRouter'} · ${m}${k?' · Key ✓':' · ⚠ ไม่มี Key'}`;document.getElementById('sdot').classList.toggle('off',!k)}
+function updSumm(){const p=document.querySelector('input[name=prov]:checked')?.value||'gemini';const k=document.getElementById('fKey').value;const m=document.getElementById('fModel').value.split('/').pop();const keyOk=k||HAS_SERVER_KEY;document.getElementById('ssumm').textContent=`${p==='gemini'?'Gemini':'OpenRouter'} · ${m}${k?' · Key ✓':HAS_SERVER_KEY?' · Server Key ✓':' · ⚠ ไม่มี Key'}`;document.getElementById('sdot').classList.toggle('off',!keyOk)}
 function saveSett(){const s={prov:document.querySelector('input[name=prov]:checked')?.value||'gemini',key:document.getElementById('fKey').value,model:document.getElementById('fModel').value};localStorage.setItem('csi',JSON.stringify(s));const t=document.getElementById('stag');t.classList.add('on');setTimeout(()=>t.classList.remove('on'),3000);toast('บันทึกการตั้งค่าสำเร็จ','s')}
 function loadLS(){try{const s=JSON.parse(localStorage.getItem('csi')||'{}');if(s.prov)document.getElementById(s.prov==='openrouter'?'rbOR':'rbG').checked=true;if(s.key)document.getElementById('fKey').value=s.key;if(s.model)document.getElementById('fModel').value=s.model}catch(e){}}
 function getCfg(){return{prov:document.querySelector('input[name=prov]:checked')?.value||'gemini',key:document.getElementById('fKey').value.trim(),model:document.getElementById('fModel').value}}
@@ -1284,7 +1443,7 @@ function doTranslate(){
   const {prov,key,model}=getCfg();
   if(!url){toast('กรุณาระบุ URL','e');return}
   if(!url.startsWith('http')){toast('URL ต้องเริ่มด้วย https://','e');return}
-  if(!key){toast('กรุณาตั้งค่า API Key ก่อน','e');if(!settOpen)toggleSett();return}
+  if(!key && !HAS_SERVER_KEY){toast('กรุณาตั้งค่า API Key ก่อน','e');if(!settOpen)toggleSett();return}
   closeDup();
   document.getElementById('rc').classList.remove('show');
   document.getElementById('pp').classList.add('show');
@@ -1628,22 +1787,172 @@ function toggleRssAuto(id,v){fetch(`/api/rss/${id}`,{method:'PATCH',headers:{'Co
 function delRss(id){if(!confirm('ลบ Feed นี้?'))return;fetch(`/api/rss/${id}`,{method:'DELETE'}).then(()=>{toast('ลบ Feed สำเร็จ','s');loadRss()})}
 function runRss(){fetch('/api/rss/run',{method:'POST'}).then(r=>r.json()).then(d=>toast(d.message,'i'))}
 
-/* ── Config ── */
-function loadCfg(){fetch('/api/config').then(r=>r.json()).then(d=>{
-  if(d.rss_api_type)document.getElementById('cfgProv').value=d.rss_api_type;
-  if(d.rss_model)document.getElementById('cfgModel').value=d.rss_model;
-  if(d.rss_api_key)document.getElementById('cfgKey').value=d.rss_api_key;
-  if(d.rss_max_per_feed)document.getElementById('cfgMax').value=d.rss_max_per_feed;
-  document.getElementById('cfgAuth').checked=!!d.auth_enabled;
-  toggleAuthFields();
-}).catch(()=>{})}
-function toggleAuthFields(){document.getElementById('authFields').style.display=document.getElementById('cfgAuth').checked?'':'none'}
-function toggleCfgKey(){const f=document.getElementById('cfgKey'),i=document.getElementById('cfgEye');f.type=f.type==='password'?'text':'password';i.className=f.type==='password'?'fa fa-eye':'fa fa-eye-slash'}
-function toggleCfgPw(){const f=document.getElementById('cfgPw'),i=document.getElementById('pwEye');f.type=f.type==='password'?'text':'password';i.className=f.type==='password'?'fa fa-eye':'fa fa-eye-slash'}
-function saveConfig(){
-  const payload={rss_api_type:document.getElementById('cfgProv').value,rss_model:document.getElementById('cfgModel').value,rss_api_key:document.getElementById('cfgKey').value,rss_max_per_feed:parseInt(document.getElementById('cfgMax').value)||5,auth_enabled:document.getElementById('cfgAuth').checked};
-  const pw=document.getElementById('cfgPw')?.value;if(pw)payload.auth_password=pw;
-  fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json()).then(()=>toast('บันทึกการตั้งค่าสำเร็จ','s')).catch(()=>toast('เกิดข้อผิดพลาด','e'));
+/* ── Generic eye toggle ── */
+function toggleField(id,eye){
+  const f=document.getElementById(id),i=document.getElementById(eye);
+  f.type=f.type==='password'?'text':'password';
+  i.className=f.type==='password'?'fa fa-eye':'fa fa-eye-slash';
+}
+
+/* ── System Config (Admin) ── */
+function loadSysConfig(){
+  fetch('/api/system-config').then(r=>r.json()).then(d=>{
+    if(!d.api_type && !d.api_model) return; // not admin or empty
+    const at=document.getElementById('sysApiType');
+    const am=document.getElementById('sysApiModel');
+    const ak=document.getElementById('sysApiKey');
+    const rm=document.getElementById('sysRssMax');
+    const sh=document.getElementById('sysSmtpHost');
+    const sp=document.getElementById('sysSmtpPort');
+    const su=document.getElementById('sysSmtpUser');
+    const sw=document.getElementById('sysSmtpPw');
+    const sf=document.getElementById('sysSmtpFrom');
+    if(at && d.api_type) at.value=d.api_type;
+    if(am && d.api_model) am.value=d.api_model;
+    if(ak && d.api_key) ak.placeholder=d.api_key; // masked value shown as placeholder
+    if(rm && d.rss_max_per_feed) rm.value=d.rss_max_per_feed;
+    if(sh && d.smtp_host) sh.value=d.smtp_host;
+    if(sp && d.smtp_port) sp.value=d.smtp_port;
+    if(su && d.smtp_username) su.value=d.smtp_username;
+    if(sw && d.smtp_password) sw.placeholder=d.smtp_password; // masked
+    if(sf && d.smtp_from) sf.value=d.smtp_from;
+  }).catch(()=>{});
+}
+
+function saveSysConfig(){
+  const payload={
+    api_type: document.getElementById('sysApiType')?.value||'',
+    api_model: document.getElementById('sysApiModel')?.value||'',
+    api_key: document.getElementById('sysApiKey')?.value||'',
+    rss_max_per_feed: parseInt(document.getElementById('sysRssMax')?.value)||5,
+    smtp_host: document.getElementById('sysSmtpHost')?.value||'',
+    smtp_port: parseInt(document.getElementById('sysSmtpPort')?.value)||587,
+    smtp_username: document.getElementById('sysSmtpUser')?.value||'',
+    smtp_password: document.getElementById('sysSmtpPw')?.value||'',
+    smtp_from: document.getElementById('sysSmtpFrom')?.value||''
+  };
+  fetch('/api/system-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.ok){toast('บันทึก System Config สำเร็จ','s');loadSysConfig();}
+      else toast(d.error||'เกิดข้อผิดพลาด','e');
+    }).catch(()=>toast('เกิดข้อผิดพลาด','e'));
+}
+
+/* ── User Management (Admin) ── */
+function loadUsers(){
+  fetch('/api/users').then(r=>r.json()).then(users=>{
+    const tbody=document.getElementById('userTbody');
+    if(!tbody) return;
+    if(!users.length){
+      tbody.innerHTML=`<tr><td colspan="6"><div class="empty"><div class="empty-ico"><i class="fa fa-users"></i></div><div class="empty-t">ยังไม่มีผู้ใช้</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML=users.map(u=>{
+      const statusPill=u.is_active
+        ? `<span class="status-pill status-active"><i class="fa fa-circle" style="font-size:6px"></i>Active</span>`
+        : `<span class="status-pill status-inactive"><i class="fa fa-circle" style="font-size:6px"></i>Inactive</span>`;
+      const totpPill=u.totp_verified
+        ? `<span class="totp-ok"><i class="fa fa-shield-check"></i> Verified</span>`
+        : `<span class="totp-no"><i class="fa fa-shield-halved"></i> Pending</span>`;
+      const lastLogin=u.last_login ? new Date(u.last_login).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}) : '—';
+      const roleBadge=u.role==='admin'
+        ? `<span style="font-size:11px;background:rgba(96,165,250,.15);color:var(--cyan);border:1px solid rgba(96,165,250,.25);border-radius:4px;padding:1px 6px;font-weight:600">Admin</span>`
+        : `<span style="font-size:11px;background:rgba(113,113,122,.12);color:var(--tm);border:1px solid rgba(113,113,122,.2);border-radius:4px;padding:1px 6px">User</span>`;
+      return`<tr>
+        <td><span style="font-weight:600;color:var(--t)">${esc(u.username)}</span></td>
+        <td>${roleBadge}</td>
+        <td>${statusPill}</td>
+        <td>${totpPill}</td>
+        <td style="font-size:12px;color:var(--td)">${lastLogin}</td>
+        <td>
+          <div class="ag" style="justify-content:flex-start">
+            <button class="btn bg bxs" onclick="toggleUserActive(${u.id},${u.is_active?1:0})" title="${u.is_active?'Deactivate':'Activate'}">
+              <i class="fa ${u.is_active?'fa-ban':'fa-check'}"></i>
+            </button>
+            <button class="btn bg bxs" onclick="changeUserRole(${u.id},'${u.role==='admin'?'user':'admin'}')" title="สลับ Role">
+              <i class="fa fa-arrow-right-arrow-left"></i>
+            </button>
+            <button class="btn bg bxs" onclick="resetUserTotp(${u.id})" title="Reset TOTP">
+              <i class="fa fa-qrcode"></i>
+            </button>
+            <button class="btn bd bxs" onclick="deleteUser(${u.id},'${esc(u.username)}')" title="ลบผู้ใช้">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }).catch(()=>toast('โหลดผู้ใช้ไม่ได้','e'));
+}
+
+function createUser(){
+  const username=document.getElementById('newUsername')?.value.trim();
+  const password=document.getElementById('newUserPw')?.value;
+  const role=document.getElementById('newUserRole')?.value||'user';
+  if(!username){toast('กรุณาระบุ Username','e');return}
+  if(!password||password.length<8){toast('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร','e');return}
+  fetch('/api/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password,role})})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){
+        toast(`สร้างผู้ใช้ "${username}" สำเร็จ`,'s');
+        document.getElementById('newUsername').value='';
+        document.getElementById('newUserPw').value='';
+        loadUsers();
+      } else toast(d.error||'เกิดข้อผิดพลาด','e');
+    }).catch(()=>toast('เกิดข้อผิดพลาด','e'));
+}
+
+function deleteUser(uid,username){
+  if(!confirm(`ยืนยันการลบผู้ใช้ "${username}"?\nการกระทำนี้ไม่สามารถย้อนกลับได้`))return;
+  fetch(`/api/users/${uid}`,{method:'DELETE'})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){toast(`ลบผู้ใช้ "${username}" สำเร็จ`,'s');loadUsers();}
+      else toast(d.error||'ลบไม่ได้','e');
+    }).catch(()=>toast('เกิดข้อผิดพลาด','e'));
+}
+
+function toggleUserActive(uid,current){
+  const newVal=current?0:1;
+  fetch(`/api/users/${uid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_active:newVal})})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){toast(newVal?'เปิดใช้งานสำเร็จ':'ระงับผู้ใช้สำเร็จ','s');loadUsers();}
+      else toast(d.error||'เกิดข้อผิดพลาด','e');
+    }).catch(()=>toast('เกิดข้อผิดพลาด','e'));
+}
+
+function changeUserRole(uid,newRole){
+  if(!confirm(`เปลี่ยน Role เป็น "${newRole}"?`))return;
+  fetch(`/api/users/${uid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:newRole})})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){toast(`เปลี่ยน Role เป็น ${newRole} สำเร็จ`,'s');loadUsers();}
+      else toast(d.error||'เกิดข้อผิดพลาด','e');
+    }).catch(()=>toast('เกิดข้อผิดพลาด','e'));
+}
+
+function resetUserTotp(uid){
+  if(!confirm('Reset Google Authenticator ของผู้ใช้นี้?\nผู้ใช้จะต้องตั้งค่า TOTP ใหม่ในการ Login ครั้งถัดไป'))return;
+  fetch(`/api/users/${uid}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({reset_totp:true})})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){toast('Reset TOTP สำเร็จ','s');loadUsers();}
+      else toast(d.error||'เกิดข้อผิดพลาด','e');
+    }).catch(()=>toast('เกิดข้อผิดพลาด','e'));
+}
+
+/* ── Change My Password ── */
+function changeMyPw(){
+  const oldPw=document.getElementById('oldPw')?.value;
+  const newPw=document.getElementById('newPw')?.value;
+  if(!oldPw){toast('กรุณาใส่รหัสผ่านเดิม','e');return}
+  if(!newPw||newPw.length<8){toast('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร','e');return}
+  fetch('/api/me/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_password:oldPw,new_password:newPw})})
+    .then(r=>r.json()).then(d=>{
+      if(d.ok){
+        toast('เปลี่ยนรหัสผ่านสำเร็จ','s');
+        document.getElementById('oldPw').value='';
+        document.getElementById('newPw').value='';
+      } else toast(d.error||'เกิดข้อผิดพลาด','e');
+    }).catch(()=>toast('เกิดข้อผิดพลาด','e'));
 }
 
 /* ── Nav sync ── */

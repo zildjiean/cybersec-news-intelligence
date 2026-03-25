@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>OTP Verification — CyberSec Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+<style>
+:root{--bg:#09090b;--sf:#18181b;--b:#27272a;--cyan:#60a5fa;--t:#fafafa;--tm:#a1a1aa;--td:#71717a;--green:#22c55e}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:14px}
+body::before{content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse 80% 80% at 50% -20%,rgba(96,165,250,.15),transparent),
+             radial-gradient(ellipse 60% 60% at 80% 80%,rgba(168,85,247,.08),transparent);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(96,165,250,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(96,165,250,.04) 1px,transparent 1px);
+  background-size:40px 40px;pointer-events:none;z-index:0}
+.card{position:relative;z-index:1;width:100%;max-width:400px;
+  background:rgba(24,24,27,.85);border:1px solid var(--b);border-radius:16px;
+  padding:40px;backdrop-filter:blur(12px);box-shadow:0 0 60px rgba(96,165,250,.08)}
+.logo{text-align:center;margin-bottom:28px}
+.logo-icon{width:56px;height:56px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(34,197,94,.15),rgba(96,165,250,.15));
+  border:1px solid rgba(34,197,94,.3);display:inline-flex;align-items:center;
+  justify-content:center;font-size:22px;color:var(--green);
+  box-shadow:0 0 20px rgba(34,197,94,.15);margin-bottom:12px}
+.logo-title{font-size:18px;font-weight:700}
+.logo-sub{font-size:12px;color:var(--tm);margin-top:4px}
+.step-badge{display:inline-flex;align-items:center;gap:6px;
+  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);
+  border-radius:20px;padding:4px 12px;font-size:11px;color:var(--green);
+  margin-bottom:20px;font-family:'JetBrains Mono',monospace}
+.user-chip{display:inline-flex;align-items:center;gap:8px;
+  background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.15);
+  border-radius:8px;padding:8px 14px;margin-bottom:24px;font-size:13px}
+.user-chip i{color:var(--cyan)}
+.otp-label{font-size:12px;font-weight:600;color:var(--tm);text-transform:uppercase;
+  letter-spacing:.05em;margin-bottom:10px;text-align:center}
+.otp-input{width:100%;padding:16px;background:rgba(39,39,42,.6);
+  border:1px solid var(--b);border-radius:10px;color:var(--t);
+  font-size:28px;font-family:'JetBrains Mono',monospace;font-weight:600;
+  text-align:center;letter-spacing:12px;outline:none;transition:border .2s}
+.otp-input:focus{border-color:var(--green);box-shadow:0 0 0 2px rgba(34,197,94,.15)}
+.otp-hint{font-size:11px;color:var(--td);text-align:center;margin-top:8px}
+.btn-verify{width:100%;padding:12px;border:none;border-radius:8px;
+  background:linear-gradient(135deg,#16a34a,#059669);color:#fff;
+  font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:16px}
+.btn-verify:hover{opacity:.9}
+.error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);
+  border-radius:8px;padding:10px 14px;color:#fca5a5;font-size:13px;
+  margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.back{text-align:center;margin-top:16px;font-size:12px;color:var(--td)}
+.back a{color:var(--cyan);text-decoration:none}
+.back a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon"><i class="fa fa-mobile-screen-button"></i></div>
+    <div class="logo-title">Two-Factor Authentication</div>
+    <div class="logo-sub">ยืนยันตัวตนด้วย Google Authenticator</div>
+  </div>
+  <div style="text-align:center">
+    <span class="step-badge"><i class="fa fa-shield-check"></i>&nbsp;Step 2 / 2 — ยืนยัน OTP</span>
+  </div>
+  {% if username %}
+  <div style="text-align:center">
+    <div class="user-chip"><i class="fa fa-user"></i> {{ username }}</div>
+  </div>
+  {% endif %}
+  {% if error %}
+  <div class="error"><i class="fa fa-circle-exclamation"></i>&nbsp;{{ error }}</div>
+  {% endif %}
+  <form method="POST" id="totpForm">
+    <div class="otp-label">รหัส OTP 6 หลัก</div>
+    <input type="text" name="totp_code" id="otpInput" class="otp-input"
+           inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+           placeholder="000000" autocomplete="one-time-code" autofocus/>
+    <div class="otp-hint">เปิด Google Authenticator แล้วกรอกรหัส 6 หลักที่แสดงอยู่</div>
+    <button type="submit" class="btn-verify"><i class="fa fa-check"></i>&nbsp;ยืนยัน OTP</button>
+  </form>
+  <div class="back"><a href="/login"><i class="fa fa-arrow-left"></i> กลับไปหน้า Login</a></div>
+</div>
+<script>
+const inp=document.getElementById('otpInput');
+inp.addEventListener('input',()=>{
+  inp.value=inp.value.replace(/\D/g,'').slice(0,6);
+  if(inp.value.length===6) document.getElementById('totpForm').submit();
+});
+</script>
+</body>
+</html>

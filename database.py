@@ -17,6 +17,38 @@ class Database:
 
     def init_db(self):
         conn = self.get_connection()
+
+        # ── Users table ──────────────────────────────────────────────────────
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                totp_secret TEXT NOT NULL,
+                role TEXT DEFAULT 'user',
+                is_active INTEGER DEFAULT 1,
+                totp_verified INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (DATETIME('now')),
+                last_login TEXT
+            )
+        ''')
+
+        # ── System config table (server-side settings) ───────────────────────
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS system_config (
+                key TEXT PRIMARY KEY,
+                value TEXT DEFAULT ''
+            )
+        ''')
+        # Seed default config keys
+        for k in ('api_key','api_type','api_model',
+                  'smtp_host','smtp_port','smtp_username','smtp_password','smtp_from',
+                  'rss_max_per_feed'):
+            conn.execute(
+                'INSERT OR IGNORE INTO system_config (key, value) VALUES (?, ?)',
+                (k, '5' if k == 'rss_max_per_feed' else '')
+            )
+
         # Articles table (with stars + tags migration)
         conn.execute('''
             CREATE TABLE IF NOT EXISTS articles (
@@ -305,4 +337,97 @@ class Database:
             "DELETE FROM jobs WHERE created_at < DATETIME('now', ? || ' hours')",
             (f'-{hours}',)
         )
+        conn.commit(); conn.close()
+
+    # ── Users ─────────────────────────────────────────────────────────────────
+
+    def get_user_count(self):
+        conn = self.get_connection()
+        n = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+        conn.close()
+        return n
+
+    def create_user(self, username, password_hash, totp_secret, role='user'):
+        conn = self.get_connection()
+        cur = conn.execute(
+            'INSERT INTO users (username, password_hash, totp_secret, role) VALUES (?,?,?,?)',
+            (username, password_hash, totp_secret, role)
+        )
+        uid = cur.lastrowid
+        conn.commit(); conn.close()
+        return uid
+
+    def get_user_by_username(self, username):
+        conn = self.get_connection()
+        row = conn.execute('SELECT * FROM users WHERE username=?', (username,)).fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def get_user(self, user_id):
+        conn = self.get_connection()
+        row = conn.execute('SELECT * FROM users WHERE id=?', (user_id,)).fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def get_all_users(self):
+        conn = self.get_connection()
+        rows = conn.execute(
+            'SELECT id, username, role, is_active, totp_verified, created_at, last_login '
+            'FROM users ORDER BY created_at'
+        ).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def update_user(self, user_id, **kwargs):
+        conn = self.get_connection()
+        allowed = ('role', 'is_active', 'password_hash', 'totp_secret', 'totp_verified', 'last_login')
+        for k, v in kwargs.items():
+            if k in allowed:
+                conn.execute(f'UPDATE users SET {k}=? WHERE id=?', (v, user_id))
+        conn.commit(); conn.close()
+
+    def delete_user(self, user_id):
+        conn = self.get_connection()
+        conn.execute('DELETE FROM users WHERE id=?', (user_id,))
+        conn.commit(); conn.close()
+
+    def mark_totp_verified(self, user_id):
+        self.update_user(user_id, totp_verified=1)
+
+    def update_last_login(self, user_id):
+        self.update_user(user_id, last_login=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+    # ── System Config ─────────────────────────────────────────────────────────
+
+    def get_system_config(self):
+        conn = self.get_connection()
+        rows = conn.execute('SELECT key, value FROM system_config').fetchall()
+        conn.close()
+        return {r['key']: r['value'] for r in rows}
+
+    def get_config_value(self, key, default=''):
+        conn = self.get_connection()
+        row = conn.execute('SELECT value FROM system_config WHERE key=?', (key,)).fetchone()
+        conn.close()
+        return row['value'] if row else default
+
+    def set_config_value(self, key, value):
+        conn = self.get_connection()
+        conn.execute(
+            'INSERT OR REPLACE INTO system_config (key, value) VALUES (?,?)',
+            (key, value)
+        )
+        conn.commit(); conn.close()
+
+    def update_system_config(self, data: dict):
+        conn = self.get_connection()
+        allowed = ('api_key','api_type','api_model',
+                   'smtp_host','smtp_port','smtp_username','smtp_password','smtp_from',
+                   'rss_max_per_feed')
+        for k, v in data.items():
+            if k in allowed:
+                conn.execute(
+                    'INSERT OR REPLACE INTO system_config (key, value) VALUES (?,?)',
+                    (k, str(v))
+                )
         conn.commit(); conn.close()
