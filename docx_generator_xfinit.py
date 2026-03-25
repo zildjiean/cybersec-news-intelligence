@@ -83,9 +83,14 @@ def _fill_template(doc, data: dict):
         raise ValueError(f"Template landmark not found: sh={sh} ch={ch} ih={ih} rh={rh}")
 
     # ── 1. Single-paragraph replacements ───────────────────────────────────
-    _replace_para(paras[1], title)
-    _replace_para(paras[2], f"แหล่งที่มา: {source_name}")
-    _replace_para(paras[3], f"Reference: {url}")
+    # Auto-detect title/source/ref positions: they are the first 3 text-bearing
+    # paragraphs before the summary section header (skip image-only paragraphs).
+    pre_section = [p for p in paras[:sh]
+                   if p.text.strip()
+                   and p._element.find(f'.//{{{W}}}drawing') is None]
+    if len(pre_section) >= 1: _replace_para(pre_section[0], title)
+    if len(pre_section) >= 2: _replace_para(pre_section[1], f"แหล่งที่มา: {source_name}")
+    if len(pre_section) >= 3: _replace_para(pre_section[2], f"Reference: {url}")
 
     # ── 2. Summary section: single para between sh+1 and ch-1 ──────────────
     # Reference formatting from the summary para (sh+1)

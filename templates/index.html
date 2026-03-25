@@ -596,17 +596,18 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
 .m-tmpl-btn:hover{background:var(--bg3);border-color:rgba(255,255,255,.2)}
 .m-tmpl-btn-xfinit{border-color:rgba(255,59,99,.35)!important;color:#FF3B63!important}
 .m-tmpl-btn-xfinit:hover{background:rgba(255,59,99,.08)!important;border-color:rgba(255,59,99,.6)!important}
-/* ── DOCX template dropdown (table/card rows) ── */
-.row-docx-dd{position:relative;display:inline-flex;align-items:center}
+/* ── DOCX template dropdown (table/card rows) — fixed-position portal ── */
+.row-docx-dd{display:inline-flex;align-items:center}
 .row-docx-btn{display:inline-flex;align-items:center;gap:3px}
 .row-docx-btn .rd-arr{font-size:8px;opacity:.7;transition:transform .2s}
-.row-docx-dd.open .rd-arr{transform:rotate(180deg)}
-.row-docx-menu{position:absolute;top:calc(100% + 5px);right:0;z-index:900;
+.row-docx-btn.open .rd-arr{transform:rotate(180deg)}
+/* Portal dropdown — appended to <body>, positioned via JS */
+#docxPortal{position:fixed;z-index:9999;
   background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;
-  min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,.5);
+  min-width:200px;box-shadow:0 12px 32px rgba(0,0,0,.55);
   padding:5px;display:none;flex-direction:column;
   animation:ddFadeIn .12s ease}
-.row-docx-menu.open{display:flex}
+#docxPortal.open{display:flex}
 @keyframes ddFadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .ddi{display:flex;align-items:center;gap:10px;padding:9px 10px;
   border-radius:7px;cursor:pointer;text-decoration:none;
@@ -625,6 +626,19 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
 <body>
 
 <div id="toasts"></div>
+
+<!-- DOCX template portal dropdown (shared, fixed position) -->
+<div id="docxPortal">
+  <a class="ddi" id="docxPortalStd" href="#">
+    <div class="ddi-icon"><i class="fa fa-file-word"></i></div>
+    <div class="ddi-text"><div class="ddi-name">Standard</div><div class="ddi-desc">รูปแบบมาตรฐาน</div></div>
+  </a>
+  <div class="row-docx-sep"></div>
+  <a class="ddi ddi-xfinit" id="docxPortalXfinit" href="#">
+    <div class="ddi-icon"><img src="/static/xfinit_logo.png" style="height:15px;object-fit:contain"></div>
+    <div class="ddi-text"><div class="ddi-name">XFINIT v1</div><div class="ddi-desc">รายงานองค์กร</div></div>
+  </a>
+</div>
 
 <!-- ══ OVERLAYS ══════════════════════════════════════════ -->
 
@@ -1585,7 +1599,7 @@ function renderTable(arts){
     const d=new Date(a.created_at);const ds=d.toLocaleDateString('th-TH',{day:'2-digit',month:'2-digit',year:'2-digit'});const ts=d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
     const sc='sev sev-'+(a.severity||'Info');
     const tags=(a.tags||'').split(',').filter(t=>t.trim()).map(t=>`<span class="tag-chip">${esc(t.trim())}</span>`).join('');
-    const pdfBtn=a.pdf_path?`<a href="/download/${a.id}" class="btn bs bxs" title="Download PDF"><i class="fa fa-download"></i></a><button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><span class="row-docx-dd" id="rdd${a.id}"><button class="btn bg bxs row-docx-btn" onclick="toggleRowDocxDd(event,${a.id})" title="Download DOCX — เลือก Template"><i class="fa fa-file-word"></i><i class="fa fa-chevron-down rd-arr"></i></button><div class="row-docx-menu" id="rowDocxMenu${a.id}"><a class="ddi" href="/download-docx/${a.id}"><div class="ddi-icon"><i class="fa fa-file-word"></i></div><div class="ddi-text"><div class="ddi-name">Standard</div><div class="ddi-desc">รูปแบบมาตรฐาน</div></div></a><div class="row-docx-sep"></div><a class="ddi ddi-xfinit" href="/download-docx/${a.id}/xfinit"><div class="ddi-icon"><img src="/static/xfinit_logo.png" style="height:15px"></div><div class="ddi-text"><div class="ddi-name">XFINIT v1</div><div class="ddi-desc">รายงานองค์กร</div></div></a></div></span>`:`<span style="font-size:11px;color:var(--td)">—</span>`;
+    const pdfBtn=a.pdf_path?`<a href="/download/${a.id}" class="btn bs bxs" title="Download PDF"><i class="fa fa-download"></i></a><button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><span class="row-docx-dd"><button class="btn bg bxs row-docx-btn" id="rdb${a.id}" onclick="toggleDocxPortal(event,${a.id})" title="Download DOCX — เลือก Template"><i class="fa fa-file-word"></i><i class="fa fa-chevron-down rd-arr"></i></button></span>`:`<span style="font-size:11px;color:var(--td)">—</span>`;
     return`<tr>
       <td><button class="star-btn${a.starred?' on':''}" onclick="toggleStar(${a.id},${a.starred?0:1},this)" title="${a.starred?'Unstar':'Star'}"><i class="fa fa-star"></i></button></td>
       <td><div class="tdate">${ds}<br/><span style="font-size:10px;opacity:.6">${ts}</span></div></td>
@@ -1623,7 +1637,7 @@ function renderCards(arts){
       <div class="acard-foot"><span class="acard-src"><i class="fa fa-globe" style="font-size:10px;margin-right:3px"></i>${esc(a.source_name||'—')}${a.operator?`<span style="color:#52525b;margin-left:6px"><i class="fa fa-user" style="font-size:9px"></i> ${esc(a.operator)}</span>`:''}</span><span class="acard-date">${ds}</span></div>
       <div class="acard-actions">
         <button class="btn bg bxs" onclick="openArtModal(${a.id})"><i class="fa fa-align-left"></i></button>
-        ${a.pdf_path?`<button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><a href="/download/${a.id}" class="btn bs bxs" title="PDF"><i class="fa fa-download"></i></a><span class="row-docx-dd" id="cdd${a.id}"><button class="btn bg bxs row-docx-btn" onclick="toggleRowDocxDd(event,${a.id})" title="Download DOCX"><i class="fa fa-file-word"></i><i class="fa fa-chevron-down rd-arr"></i></button><div class="row-docx-menu" id="cardDocxMenu${a.id}"><a class="ddi" href="/download-docx/${a.id}"><div class="ddi-icon"><i class="fa fa-file-word"></i></div><div class="ddi-text"><div class="ddi-name">Standard</div><div class="ddi-desc">รูปแบบมาตรฐาน</div></div></a><div class="row-docx-sep"></div><a class="ddi ddi-xfinit" href="/download-docx/${a.id}/xfinit"><div class="ddi-icon"><img src="/static/xfinit_logo.png" style="height:15px"></div><div class="ddi-text"><div class="ddi-name">XFINIT v1</div><div class="ddi-desc">รายงานองค์กร</div></div></a></div></span>`:''}
+        ${a.pdf_path?`<button class="btn bg bxs" onclick="openPdfModal(${a.id})" title="Preview PDF"><i class="fa fa-eye"></i></button><a href="/download/${a.id}" class="btn bs bxs" title="PDF"><i class="fa fa-download"></i></a><span class="row-docx-dd"><button class="btn bg bxs row-docx-btn" id="rdb${a.id}" onclick="toggleDocxPortal(event,${a.id})" title="Download DOCX"><i class="fa fa-file-word"></i><i class="fa fa-chevron-down rd-arr"></i></button></span>`:''}
 
         <button class="btn bg bxs" onclick="openEditModal(${a.id})" title="แก้ไข"><i class="fa fa-pen"></i></button>
         <button class="btn bg bxs" onclick="openTagModal(${a.id},'${esc(a.tags||'')}')"><i class="fa fa-tags"></i></button>
@@ -1702,25 +1716,52 @@ function openArtModal(id){
 function closeArtModal(){document.getElementById('artModal').classList.remove('show');document.body.style.overflow=''}
 document.getElementById('artModal').addEventListener('click',function(e){if(e.target===this)closeArtModal()});
 
-/* ── DOCX template dropdown (rows/cards) ── */
-function toggleRowDocxDd(e,id){
+/* ── DOCX portal dropdown (rows/cards) ── */
+let _docxPortalArticleId = null;
+let _docxPortalBtn = null;
+
+function toggleDocxPortal(e, id){
   e.stopPropagation();
-  const menuId=['rowDocxMenu'+id,'cardDocxMenu'+id];
-  const wrapId=['rdd'+id,'cdd'+id];
-  // Close all others
-  document.querySelectorAll('.row-docx-menu.open').forEach(m=>{
-    if(!menuId.includes(m.id)){m.classList.remove('open');m.closest('.row-docx-dd')?.classList.remove('open')}
-  });
-  menuId.forEach((mid,i)=>{
-    const m=document.getElementById(mid);
-    if(m){m.classList.toggle('open');document.getElementById(wrapId[i])?.classList.toggle('open',m.classList.contains('open'))}
-  });
-}
-document.addEventListener('click',function(e){
-  if(!e.target.closest('.row-docx-dd')){
-    document.querySelectorAll('.row-docx-menu.open').forEach(m=>{m.classList.remove('open');m.closest('.row-docx-dd')?.classList.remove('open')});
+  const btn = e.currentTarget;
+  const portal = document.getElementById('docxPortal');
+  // Toggle: close if same button
+  if(_docxPortalArticleId === id && portal.classList.contains('open')){
+    closeDocxPortal(); return;
   }
+  // Position portal below the button using fixed coords
+  const rect = btn.getBoundingClientRect();
+  const pw = 210; // min-width of portal
+  let left = rect.right - pw;
+  if(left < 8) left = 8;
+  let top = rect.bottom + 6;
+  // Flip upward if not enough space below
+  if(top + 120 > window.innerHeight) top = rect.top - 126;
+  portal.style.left = left + 'px';
+  portal.style.top  = top  + 'px';
+  // Wire up links
+  document.getElementById('docxPortalStd').href   = '/download-docx/' + id;
+  document.getElementById('docxPortalXfinit').href = '/download-docx/' + id + '/xfinit';
+  // Mark active button
+  if(_docxPortalBtn) _docxPortalBtn.classList.remove('open');
+  btn.classList.add('open');
+  _docxPortalBtn = btn;
+  _docxPortalArticleId = id;
+  portal.classList.add('open');
+}
+
+function closeDocxPortal(){
+  const portal = document.getElementById('docxPortal');
+  if(portal) portal.classList.remove('open');
+  if(_docxPortalBtn){ _docxPortalBtn.classList.remove('open'); _docxPortalBtn=null; }
+  _docxPortalArticleId = null;
+}
+
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#docxPortal') && !e.target.closest('.row-docx-btn'))
+    closeDocxPortal();
 });
+// Close on scroll so portal doesn't float away
+document.addEventListener('scroll', closeDocxPortal, true);
 
 /* ── Copy buttons ── */
 function copySection(elId){
