@@ -1,0 +1,8 @@
+{
+  "auth_enabled": false,
+  "auth_password": "cybersec2024",
+  "rss_api_key": "",
+  "rss_api_type": "gemini",
+  "rss_model": "gemini-2.0-flash",
+  "rss_max_per_feed": 5
+}

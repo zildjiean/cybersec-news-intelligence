@@ -1,0 +1,51 @@
+# === Sensitive / Config ===
+config.json          # อาจมี API keys อย่า commit
+
+# === Database files ===
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# === Generated PDFs ===
+pdfs/
+
+# === Downloaded fonts ===
+fonts/
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# === Virtual environments ===
+cybersecnews/
+
+# === OS files ===
+.DS_Store
+Thumbs.db
+.directory
+
+# === Editor / IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Logs ===
+*.log
+logs/
+
+# === Claude internal ===
+.claude/
