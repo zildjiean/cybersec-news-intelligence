@@ -2,6 +2,9 @@
 CyberSec News Intelligence – Flask Application
 แปลข่าว Cybersecurity เป็นภาษาไทย และสร้างรายงาน PDF สำหรับผู้บริหาร / CISO
 """
+__version__      = "1.0.0"
+__release_date__ = "2026-03-25"
+
 import os, re, json, uuid, threading
 from datetime import datetime
 from functools import wraps
@@ -103,7 +106,13 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html')
+    return render_template('index.html',
+                           app_version=__version__,
+                           release_date=__release_date__)
+
+@app.route('/api/version')
+def api_version():
+    return jsonify(version=__version__, release_date=__release_date__)
 
 # ════════════════════════════════════════════════════════════════════════════
 #  TRANSLATION (async background job)

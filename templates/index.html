@@ -41,6 +41,10 @@ nav{height:54px;background:var(--bg);border-bottom:1px solid var(--b);
 .nav-title{font-size:13px;font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;color:var(--t)}
 .nav-sub{font-size:11px;color:var(--td);margin-top:1px}
+.nav-version{font-size:10px;font-weight:600;letter-spacing:.05em;
+  background:rgba(96,165,250,.12);color:var(--cyan);
+  border:1px solid rgba(96,165,250,.25);border-radius:4px;
+  padding:1px 6px;margin-left:6px;vertical-align:middle;text-transform:none}
 .nav-right{display:flex;align-items:center;gap:14px}
 .nav-stat{text-align:center}
 .nav-stat-n{font-size:15px;font-weight:700;color:var(--t);font-family:var(--fmono);line-height:1}
@@ -702,7 +706,7 @@ iframe.pdf-frame{flex:1;border:none;background:#525659}
   <div class="nav-logo">
     <div class="nav-mark"><i class="fa fa-shield-halved"></i></div>
     <div>
-      <div class="nav-title">CyberSec Intelligence</div>
+      <div class="nav-title">CyberSec Intelligence <span class="nav-version">v{{ app_version }}</span></div>
       <div class="nav-sub">ระบบแปลข่าว Cybersecurity เป็นภาษาไทย</div>
     </div>
   </div>
