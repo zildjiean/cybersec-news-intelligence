@@ -1,5 +1,6 @@
 # === Sensitive / Config ===
 config.json          # อาจมี API keys อย่า commit
+.secret_key          # Flask secret key — ห้าม commit เด็ดขาด
 
 # === Database files ===
 *.db

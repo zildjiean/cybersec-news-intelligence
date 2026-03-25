@@ -5,11 +5,12 @@ CyberSec News Intelligence – Flask Application
 __version__      = "1.1.0"
 __release_date__ = "2026-03-25"
 
-import os, re, json, uuid, threading, io, base64
+import os, re, json, uuid, threading, io, base64, secrets
 from datetime import datetime
 from functools import wraps
 from flask import (Flask, render_template, request, jsonify,
                    send_file, session, redirect, url_for)
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import bcrypt as _bcrypt
 import pyotp
@@ -24,9 +25,32 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PDF_DIR  = os.path.join(BASE_DIR, 'pdfs')
 os.makedirs(PDF_DIR, exist_ok=True)
 
+# ── Secret key: persist to file so sessions survive restarts ────────────────
+_SECRET_KEY_FILE = os.path.join(BASE_DIR, '.secret_key')
+def _load_or_create_secret_key():
+    env_key = os.environ.get('SECRET_KEY')
+    if env_key:
+        return env_key
+    if os.path.exists(_SECRET_KEY_FILE):
+        with open(_SECRET_KEY_FILE, 'r') as f:
+            key = f.read().strip()
+            if key:
+                return key
+    key = secrets.token_hex(32)
+    with open(_SECRET_KEY_FILE, 'w') as f:
+        f.write(key)
+    os.chmod(_SECRET_KEY_FILE, 0o600)
+    return key
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY') or os.urandom(24)
-app.config['PERMANENT_SESSION_LIFETIME'] = 28800  # 8 hours
+# ProxyFix: แก้ปัญหา session/cookie เมื่ออยู่หลัง Nginx reverse proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+app.secret_key = _load_or_create_secret_key()
+app.config['PERMANENT_SESSION_LIFETIME'] = 28800        # 8 hours
+app.config['SESSION_COOKIE_HTTPONLY']    = True
+app.config['SESSION_COOKIE_SAMESITE']   = 'Lax'
+# SESSION_COOKIE_SECURE=True เมื่ออยู่บน HTTPS (production)
+app.config['SESSION_COOKIE_SECURE']     = os.environ.get('FLASK_ENV') != 'development'
 
 # ── DB (with fallback) ──────────────────────────────────────────────────────
 _DB_PRIMARY  = os.path.join(BASE_DIR, 'cybersec_news.db')
